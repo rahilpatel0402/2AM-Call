@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { AskCard, Card, FacilityCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
+import { AskCard, Card, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -34,6 +34,7 @@ export default function App() {
   const [detail, setDetail] = useState<ResidentDetail | null>(null);
   const [call, setCall] = useState<CallState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const callIdRef = useRef<string | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [voicing, setVoicing] = useState(false);
@@ -72,6 +73,7 @@ export default function App() {
   }, [call?.callId]);
 
   async function newCall(): Promise<CallState> {
+    setNotice(null);
     const state = await postJson<CallState>("/api/calls", { residentId });
     callIdRef.current = state.callId;
     setCall(state);
@@ -235,6 +237,7 @@ export default function App() {
       </div>
 
       {error && <div className="error-bar">{error}</div>}
+      {notice && <div className="notice-bar">{notice} <button className="link-btn" onClick={() => { setNotice(null); void startReplay(); }}>Start a new call for {r?.name.split(" ")[0]}</button></div>}
       {call?.pipelineError && <div className="error-bar">Analysis error: {call.pipelineError}</div>}
 
       <main className="layout">
@@ -258,6 +261,8 @@ export default function App() {
             <VitalsCard scores={call?.scores ?? null} />
             <FacilityCard items={call?.feasibility ?? []} started={!!call?.facts} />
           </div>
+
+          {ended && call && <NoteCard key={call.callId} call={call} onSigned={setNotice} />}
 
           <div className="row">
             <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} note={call?.priorCallsNote} />

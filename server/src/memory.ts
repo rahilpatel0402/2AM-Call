@@ -22,6 +22,20 @@ export type CallRecord = Omit<PriorCall, "id"> & { id?: string };
 
 const local: (MemoryItem & { residentId: string })[] = [];
 
+// Demo reset: signed-call memories written before this instant are hidden; seeded history always shows.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const EPOCH_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.demo-epoch");
+let demoEpoch = fs.existsSync(EPOCH_FILE) ? Number(fs.readFileSync(EPOCH_FILE, "utf8")) || 0 : 0;
+const seedTexts = () => new Set(seedPriorCalls.map((c) => toText(c)));
+
+export function resetDemoMemory(): void {
+  demoEpoch = Date.now();
+  fs.writeFileSync(EPOCH_FILE, String(demoEpoch));
+  for (let i = local.length - 1; i >= 0; i--) if (!seedTexts().has(local[i].text)) local.splice(i, 1);
+}
+
 function tag(residentId: string) {
   return `[resident:${residentId}]`;
 }
@@ -103,9 +117,12 @@ export async function recallForResident(residentId: string): Promise<RecallResul
     });
     const seen = new Set<string>();
     const items: MemoryItem[] = [];
+    const seeds = seedTexts();
     for (const hit of (data?.hits ?? []) as any[]) {
       const text = hitText(hit);
       if (!text.includes(tag(residentId)) || seen.has(text)) continue;
+      const writtenAt = hit.occurredAt ? new Date(hit.occurredAt).getTime() : Date.now();
+      if (!seeds.has(text) && writtenAt < demoEpoch) continue; // signed before the last demo reset
       seen.add(text);
       const tsFromText = text.match(/On-call (\d{4}-\d\d-\d\dT\d\d:\d\d)/)?.[1];
       items.push({
@@ -116,6 +133,8 @@ export async function recallForResident(residentId: string): Promise<RecallResul
         traceId: data?.trace?.traceId,
       });
     }
+    // A just-signed call may not be indexed yet; include it from the local write-through copy.
+    for (const l of recallLocal(residentId)) if (!seen.has(l.text)) items.push({ ...l, source: "SurrealDB Agent Memory (just written)", backend: "agent-memory" });
     return { backend: "agent-memory", items: items.sort((a, b) => b.ts.localeCompare(a.ts)) };
   } catch (err) {
     return { backend: "local", items: recallLocal(residentId), error: (err as Error).message };

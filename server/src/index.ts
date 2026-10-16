@@ -5,8 +5,10 @@ import { env } from "./env.js";
 import { getFacilityForResident, getResident, getScript, listResidents } from "./db.js";
 import { lineAudio, prewarmAll } from "./tts.js";
 import { askChart } from "./ask.js";
+import { draftNote, memorySummary, type Disposition } from "./note.js";
+import { rememberCall, resetDemoMemory } from "./memory.js";
 import { recallForResident, seedMemory } from "./memory.js";
-import { addSegment, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
+import { addSegment, broadcast, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
 const app = express();
 app.use(cors());
@@ -31,6 +33,12 @@ app.get("/api/residents/:id", (req, res) => {
 app.get("/api/residents/:id/memory", async (req, res) => {
   if (!getResident(req.params.id)) return res.status(404).json({ error: "resident not found" });
   res.json(await recallForResident(req.params.id));
+});
+
+// Demo reset: hide calls signed during rehearsal so prior-call counts start from the seeded history.
+app.post("/api/demo/reset", (_req, res) => {
+  resetDemoMemory();
+  res.json({ ok: true, message: "Signed rehearsal calls hidden; seeded prior calls remain." });
 });
 
 // Ask the chart: model-written code runs only in a disposable Daytona sandbox.
@@ -118,6 +126,41 @@ app.post("/api/calls/:id/replaying", (req, res) => {
   if (!state) return;
   setReplaying(state, req.body?.on !== false);
   res.json({ ok: true });
+});
+
+// Physician picks the disposition; Claude drafts the note from the call record only.
+app.post("/api/calls/:id/note", async (req, res) => {
+  const state = withCall(req.params.id, res);
+  if (!state) return;
+  const disposition = req.body?.disposition as Disposition;
+  if (disposition !== "transfer" && disposition !== "treat_in_place") return res.status(400).json({ error: "disposition must be transfer or treat_in_place" });
+  try {
+    state.disposition = disposition;
+    state.note = await draftNote(state, disposition);
+    broadcast(state);
+    res.json({ note: state.note });
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+// Sign: the physician-edited note is saved and the call is remembered in SurrealDB Agent Memory.
+app.post("/api/calls/:id/sign", async (req, res) => {
+  const state = withCall(req.params.id, res);
+  if (!state) return;
+  const physician = String(req.body?.physician ?? "").trim() || "On-call physician";
+  const note = String(req.body?.note ?? state.note ?? "").replace(/Reviewed and signed by: _+/, `Reviewed and signed by: ${physician}`);
+  if (!state.disposition) return res.status(400).json({ error: "choose a disposition first" });
+  state.note = note;
+  state.signedBy = physician;
+  const m = memorySummary(state, state.disposition, physician, note);
+  try {
+    await rememberCall({ id: state.callId, residentId: state.residentId, ts: new Date(state.clockStart).toLocaleString("sv-SE").replace(" ", "T").slice(0, 16), physician, ...m }); // ts in local facility time
+  } catch (err) {
+    console.warn(`[sign] memory write failed: ${(err as Error).message}`);
+  }
+  broadcast(state);
+  res.json({ ok: true, remembered: m });
 });
 
 app.post("/api/calls/:id/end", (req, res) => {

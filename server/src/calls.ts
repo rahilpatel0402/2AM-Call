@@ -33,6 +33,9 @@ export type CallState = {
   clockStart: number;
   processing: boolean;
   pipelineError: string | null;
+  disposition: "transfer" | "treat_in_place" | null;
+  note: string | null;
+  signedBy: string | null;
 };
 
 const calls = new Map<string, CallState>();
@@ -60,6 +63,9 @@ export function createCall(residentId: string): CallState {
     clockStart: Date.now(),
     processing: false,
     pipelineError: null,
+    disposition: null,
+    note: null,
+    signedBy: null,
   };
   calls.set(state.callId, state);
   // Recall this resident's prior night calls from Agent Memory at call start.

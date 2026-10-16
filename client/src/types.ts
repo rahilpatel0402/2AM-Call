@@ -71,4 +71,7 @@ export type CallState = {
   replaying: boolean;
   processing: boolean;
   pipelineError: string | null;
+  disposition: "transfer" | "treat_in_place" | null;
+  note: string | null;
+  signedBy: string | null;
 };

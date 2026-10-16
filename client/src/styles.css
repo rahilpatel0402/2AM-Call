@@ -355,3 +355,14 @@ body { margin: 0; background: var(--bg); }
 .ask-table { margin-bottom: 6px; }
 .code summary { cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--blue); margin-top: 6px; }
 .code pre { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 0.72rem; max-height: 220px; overflow: auto; white-space: pre-wrap; }
+
+/* decision + note */
+.note-card { border-top: 4px solid var(--navy); }
+.decision { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.decision-label { font-weight: 800; font-size: 0.95rem; }
+.btn-decision { background: #fff; color: var(--navy); border: 2px solid var(--navy); min-width: 190px; }
+.btn-decision.chosen { background: var(--navy); color: #fff; }
+.note-text { width: 100%; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.85rem; line-height: 1.45; padding: 12px; border-radius: 8px; border: 1px solid var(--border); resize: vertical; }
+.sign-row { display: flex; gap: 8px; margin-top: 8px; }
+.notice-bar { background: var(--green-bg); color: var(--green); padding: 10px 28px; font-weight: 700; border-bottom: 1px solid #abefc6; }
+.notice-bar .link-btn { color: var(--green); text-decoration: underline; margin-left: 8px; }
