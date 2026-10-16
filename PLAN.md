@@ -366,7 +366,7 @@ From `recallForResident()` (SurrealDB Agent Memory): calls in last 7 days with d
 
 **Done when:**
 - Margaret: red flags `fall_anticoag` + `new_confusion_vs_baseline`; feasibility shows "CT head: not available tonight".
-- Joseph: zero red flags; feasibility green for labs/IV/antibiotics; MOLST note visible; "3rd call this week".
+- Joseph: sepsis_pattern + NEWS2 (worsening of chronic confusion counts, physician decision); feasibility green for labs/IV/antibiotics; MOLST note visible under the flags; "3rd call this week".
 - Dorothy: `hypotension`, `tachycardia`, `sepsis_pattern`/`news2_high` fire even though the nurse said "a little low".
 
 ---
@@ -401,7 +401,7 @@ Runs all 3 scripts through the pipeline without the UI and checks expectations:
 ```ts
 const expectations = {
   margaret: { mustFlag: ["fall_anticoag","new_confusion_vs_baseline"], mustSurface: ["anticoagulation","baseline_mental_status"] },
-  joseph:   { mustFlag: [], mustNotFlag: ["hypotension","sepsis_pattern"], mustSurface: ["goals_of_care","prior_calls"] },
+  joseph:   { mustFlag: ["sepsis_pattern"], mustNotFlag: ["hypotension","fall_anticoag"], mustSurface: ["goals_of_care","prior_calls"] },
   dorothy:  { mustFlag: ["hypotension","tachycardia"], mustSurface: ["recent_hospitalization"] },
 };
 ```
@@ -517,7 +517,7 @@ Only start one at the 1:55 gate in `SCHEDULE.md`, and only if Phase 6 is done by
 
 1. (20 s) Slide 1 problem.
 2. (60 s) Live: Margaret. Partner reads the nurse lines (or replay). Point at "Wasn't said: apixaban" appearing, then red flags, then "CT not available tonight". "The AI didn't decide. It made sure the doctor knew."
-3. (45 s) Joseph replay. Zero red flags, MOLST Do Not Hospitalize surfaced, facility can do labs and IV antibiotics tonight, 3rd call this week. Click Treat in place, show draft note.
+3. (45 s) Joseph replay. Possible sepsis flagged, shown alongside MOLST Do Not Hospitalize, facility can do labs and IV antibiotics tonight, 3rd call this week. Click Treat in place, show draft note.
 4. (25 s) Eval table: Dorothy case, nurse downplayed, rules still fired. Arize trace.
 5. (30 s) Safeguards slide + close.
 

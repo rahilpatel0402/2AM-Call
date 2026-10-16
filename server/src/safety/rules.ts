@@ -15,9 +15,9 @@ import type { Scores } from "../scores.js";
 
 // Does an acute WORSENING of chronic confusion (e.g. dementia, baseline oriented to self only) count as
 // "new confusion" for NEWS2 consciousness and the sepsis pattern? RCP NEWS2 scores new confusion as 3.
-// false = only confusion in a resident whose baseline is oriented x3 counts (PLAN.md behavior).
-// true  = any reported confusion or worsening counts (more sensitive).
-export const COUNT_WORSENING_OF_CHRONIC_CONFUSION = false;
+// false = only confusion in a resident whose baseline is oriented x3 counts (original PLAN.md behavior).
+// true  = any reported confusion or worsening counts (more sensitive). Chosen by the physician reviewer.
+export const COUNT_WORSENING_OF_CHRONIC_CONFUSION = true;
 
 export const RED_FLAG_BANNER = "Consider urgent evaluation / transfer. Physician decision.";
 
