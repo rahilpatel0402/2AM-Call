@@ -2,9 +2,10 @@ import "./env.js";
 import express from "express";
 import cors from "cors";
 import { env } from "./env.js";
-import { getFacilityForResident, getResident, listResidents } from "./db.js";
+import { getFacilityForResident, getResident, getScript, listResidents } from "./db.js";
+import { lineAudio, prewarmAll } from "./tts.js";
 import { recallForResident, seedMemory } from "./memory.js";
-import { addSegment, createCall, endCall, getCall, replay, subscribe, type CallState, type Speaker } from "./calls.js";
+import { addSegment, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
 const app = express();
 app.use(cors());
@@ -48,6 +49,23 @@ app.get("/api/scribe-token", async (_req, res) => {
   }
 });
 
+// ---------- Voiced replay (ElevenLabs Text to Speech) ----------
+
+app.get("/api/scripts/:name", (req, res) => {
+  const lines = getScript(req.params.name);
+  if (!lines) return res.status(404).json({ error: "unknown script" });
+  res.json(lines);
+});
+
+app.get("/api/tts/:script/:index", async (req, res) => {
+  try {
+    const audio = await lineAudio(req.params.script, Number(req.params.index));
+    res.set({ "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=86400" }).send(audio);
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
 // ---------- Calls ----------
 
 function withCall(id: string, res: express.Response): CallState | undefined {
@@ -84,6 +102,14 @@ app.post("/api/calls/:id/replay", (req, res) => {
   res.json({ ok: true, script });
 });
 
+// Client-driven voiced replay marks the call as a replay (scenario clock, "Replay of recorded call").
+app.post("/api/calls/:id/replaying", (req, res) => {
+  const state = withCall(req.params.id, res);
+  if (!state) return;
+  setReplaying(state, req.body?.on !== false);
+  res.json({ ok: true });
+});
+
 app.post("/api/calls/:id/end", (req, res) => {
   const state = withCall(req.params.id, res);
   if (!state) return;
@@ -95,4 +121,5 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`server listening on http://localhost:${PORT}`);
   void seedMemory();
+  void prewarmAll();
 });

@@ -147,6 +147,17 @@ async function runNow(state: CallState) {
   if (rerunQueued.delete(state.callId)) void runNow(state);
 }
 
+// Replays (silent or voiced) run on scenario time: the call "starts" at 2:05 AM.
+export function setReplaying(state: CallState, on: boolean) {
+  state.replaying = on;
+  if (on) {
+    const scenario = new Date();
+    scenario.setHours(2, 5, 0, 0);
+    state.clockStart = scenario.getTime() - (Date.now() - state.startedAt);
+  }
+  broadcast(state);
+}
+
 export function endCall(state: CallState) {
   state.status = "ended";
   state.replaying = false;
@@ -159,11 +170,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function replay(state: CallState, scriptName: string): Promise<void> {
   const lines: ScriptLine[] | undefined = getScript(scriptName);
   if (!lines) throw new Error(`unknown script "${scriptName}"`);
-  state.replaying = true;
-  const scenario = new Date();
-  scenario.setHours(2, 5, 0, 0);
-  state.clockStart = scenario.getTime();
-  broadcast(state);
+  setReplaying(state, true);
   for (const line of lines) {
     await sleep(line.delayMs);
     if (state.status !== "live" || !state.replaying) return;

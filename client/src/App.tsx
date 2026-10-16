@@ -35,6 +35,10 @@ export default function App() {
   const [call, setCall] = useState<CallState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const callIdRef = useRef<string | null>(null);
+  const [audioOn, setAudioOn] = useState(true);
+  const [voicing, setVoicing] = useState(false);
+  const voiceRun = useRef(0); // increments to cancel an in-flight voiced replay
+  const audioEl = useRef<HTMLAudioElement | null>(null);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
@@ -74,12 +78,57 @@ export default function App() {
     return state;
   }
 
+  function stopVoice() {
+    voiceRun.current++;
+    audioEl.current?.pause();
+    audioEl.current = null;
+    setVoicing(false);
+  }
+
+  // Voiced replay: each line is played in the nurse or physician voice (ElevenLabs TTS) and
+  // posted to the call as it starts playing, so the panels react while the room hears the call.
+  async function voicedReplay(callId: string, script: string) {
+    const run = ++voiceRun.current;
+    setVoicing(true);
+    await postJson(`/api/calls/${callId}/replaying`, { on: true });
+    const lines: { speaker: "nurse" | "doctor"; text: string; delayMs: number }[] = await fetch(`/api/scripts/${script}`).then((r) => r.json());
+    const clip = (i: number) => {
+      const a = new Audio(`/api/tts/${script}/${i}`);
+      a.preload = "auto";
+      return a;
+    };
+    let next = clip(0);
+    for (let i = 0; i < lines.length; i++) {
+      if (voiceRun.current !== run) return;
+      const audio = next;
+      if (i + 1 < lines.length) next = clip(i + 1);
+      audioEl.current = audio;
+      postJson(`/api/calls/${callId}/segments`, { text: lines[i].text, speaker: lines[i].speaker }).catch(() => {});
+      try {
+        await audio.play();
+        await new Promise<void>((resolve) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+        });
+      } catch {
+        await new Promise((r) => setTimeout(r, lines[i].delayMs)); // audio blocked or failed: keep the text pacing
+      }
+      await new Promise((r) => setTimeout(r, 350)); // natural pause between speakers
+    }
+    if (voiceRun.current !== run) return;
+    setVoicing(false);
+    await postJson(`/api/calls/${callId}/replaying`, { on: false }).catch(() => {});
+  }
+
   async function startReplay() {
     setError(null);
     try {
       if (scribe.isConnected) scribe.disconnect();
+      stopVoice();
       const state = await newCall();
-      await postJson(`/api/calls/${state.callId}/replay`, { script: residentId.replace("res_", "") });
+      const script = residentId.replace("res_", "");
+      if (audioOn) void voicedReplay(state.callId, script).catch((e) => setError(`Voiced replay: ${e.message}`));
+      else await postJson(`/api/calls/${state.callId}/replay`, { script });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -105,6 +154,7 @@ export default function App() {
   }
 
   async function endCurrentCall() {
+    stopVoice();
     if (scribe.isConnected) scribe.disconnect();
     if (call) await postJson(`/api/calls/${call.callId}/end`).catch(() => {});
   }
@@ -114,7 +164,7 @@ export default function App() {
   const ended = call?.status === "ended";
   const elapsed = useElapsed(call?.startedAt, !!callActive);
   const clock = call ? new Date(call.clockStart).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
-  const source = scribe.isConnected ? "Live microphone" : call?.replaying ? "Replay of recorded call" : null;
+  const source = scribe.isConnected ? "Live microphone" : call?.replaying ? (voicing ? "Replay of recorded call · audio" : "Replay of recorded call") : null;
 
   return (
     <div className="app">
@@ -135,6 +185,7 @@ export default function App() {
             onChange={(e) => {
               setResidentId(e.target.value);
               if (scribe.isConnected) scribe.disconnect();
+              stopVoice();
               callIdRef.current = null;
               setCall(null);
             }}
@@ -143,7 +194,10 @@ export default function App() {
               <option key={x.id} value={x.id}>{x.name} · Rm {x.room}</option>
             ))}
           </select>
-          <button className="btn btn-light" onClick={startReplay} disabled={!!call?.replaying && callActive}>Replay</button>
+          <label className="audio-toggle" title="Play the call audio during replay (ElevenLabs voices)">
+            <input type="checkbox" checked={audioOn} onChange={(e) => setAudioOn(e.target.checked)} /> Audio
+          </label>
+          <button className="btn btn-light" onClick={startReplay} disabled={(!!call?.replaying || voicing) && callActive}>Replay</button>
           <button className={`btn ${scribe.isConnected ? "btn-danger" : "btn-light"}`} onClick={toggleLive}>
             {scribe.isConnected ? "Stop live" : "Live"}
           </button>

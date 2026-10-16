@@ -335,3 +335,6 @@ body { margin: 0; background: var(--bg); }
   background: #fffaeb; border: 1px solid var(--amber-border); color: var(--amber);
   font-weight: 800; font-size: 1rem;
 }
+
+.audio-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #cfdcf0; cursor: pointer; }
+.audio-toggle input { width: 16px; height: 16px; accent-color: #7cc4fa; }
