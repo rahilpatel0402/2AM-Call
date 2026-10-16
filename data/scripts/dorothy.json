@@ -1,0 +1,18 @@
+[
+  { "speaker": "nurse", "text": "Hi Doctor, this is Linda at Bayview again. I'm calling about Dorothy Kim in 305A.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Hi Linda, what's happening with her?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "She's just more tired tonight. She didn't want to get up for her snack.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "Okay. Anything else going on?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "Her BP is a little low and she seems a bit off. Otherwise she's resting in bed.", "delayMs": 2500 },
+  { "speaker": "doctor", "text": "What is the actual blood pressure?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "88 over 52.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "And her heart rate?", "delayMs": 1200 },
+  { "speaker": "nurse", "text": "Heart rate is 112.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Respiratory rate and oxygen?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "Respirations 24, and her sat is 91 percent on room air.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "Temperature?", "delayMs": 1200 },
+  { "speaker": "nurse", "text": "37.9.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Any cough? Is she making urine?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "She has a little cough, same as when she came back. I'm not sure about urine, I'd have to check her brief.", "delayMs": 2800 },
+  { "speaker": "doctor", "text": "Okay, hold on a moment.", "delayMs": 1500 }
+]

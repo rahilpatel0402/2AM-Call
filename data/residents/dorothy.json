@@ -1,0 +1,220 @@
+{
+  "id": "res_dorothy",
+  "name": "Dorothy Kim",
+  "age": 88,
+  "sex": "F",
+  "room": "305A",
+  "pcp": "Dr. Anita Shah",
+  "admitted": "2023-11-09",
+  "diagnoses": [
+    "Heart failure with reduced ejection fraction (EF 35 percent)",
+    "Type 2 diabetes on insulin",
+    "Community acquired pneumonia, recent hospitalization",
+    "Hypertension"
+  ],
+  "code_status": {
+    "value": "Full code",
+    "molst": "Full treatment",
+    "source": "molst_2025-12-01"
+  },
+  "goals_of_care": {
+    "summary": "Full treatment. Daughter Grace Kim (health care proxy) asks to be called for any change in condition.",
+    "source": "goc_note_2025-12-01"
+  },
+  "baseline": {
+    "mental_status": "Alert and oriented x3. Mildly hard of hearing.",
+    "mobility": "Wheelchair for distance. Walks 20 feet with walker and 1 assist.",
+    "source": "nursing_readmission_assessment_2026-10-10"
+  },
+  "allergies": [
+    "No known drug allergies"
+  ],
+  "medications": [
+    {
+      "name": "furosemide",
+      "dose": "40 mg daily",
+      "class": "loop diuretic"
+    },
+    {
+      "name": "lisinopril",
+      "dose": "5 mg daily",
+      "class": "ACE inhibitor"
+    },
+    {
+      "name": "metoprolol succinate",
+      "dose": "25 mg daily",
+      "class": "beta blocker"
+    },
+    {
+      "name": "insulin glargine",
+      "dose": "14 units at bedtime",
+      "class": "insulin",
+      "high_risk": true
+    },
+    {
+      "name": "aspirin",
+      "dose": "81 mg daily",
+      "class": "antiplatelet"
+    }
+  ],
+  "vitals_history": [
+    {
+      "ts": "2026-10-02T08:00:00",
+      "sbp": 138,
+      "dbp": 72,
+      "hr": 72,
+      "rr": 17,
+      "temp_c": 36.8,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-03T08:00:00",
+      "sbp": 140,
+      "dbp": 73,
+      "hr": 73,
+      "rr": 18,
+      "temp_c": 36.9,
+      "spo2": 94,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-11T08:00:00",
+      "sbp": 137,
+      "dbp": 78,
+      "hr": 76,
+      "rr": 17,
+      "temp_c": 36.6,
+      "spo2": 94,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-12T08:00:00",
+      "sbp": 135,
+      "dbp": 71,
+      "hr": 72,
+      "rr": 17,
+      "temp_c": 36.8,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-13T08:00:00",
+      "sbp": 132,
+      "dbp": 73,
+      "hr": 74,
+      "rr": 18,
+      "temp_c": 36.9,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-14T08:00:00",
+      "sbp": 135,
+      "dbp": 75,
+      "hr": 75,
+      "rr": 18,
+      "temp_c": 36.7,
+      "spo2": 94,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-15T08:00:00",
+      "sbp": 122,
+      "dbp": 76,
+      "hr": 84,
+      "rr": 17,
+      "temp_c": 37.4,
+      "spo2": 94,
+      "o2": "RA",
+      "avpu": "A"
+    }
+  ],
+  "labs": [
+    {
+      "ts": "2026-07-15T06:00:00",
+      "name": "creatinine",
+      "value": 1.2,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-08-19T06:00:00",
+      "name": "creatinine",
+      "value": 1.3,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-10-05T06:00:00",
+      "name": "creatinine",
+      "value": 1.8,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-10-09T06:00:00",
+      "name": "creatinine",
+      "value": 1.5,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-10-13T06:00:00",
+      "name": "creatinine",
+      "value": 1.4,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-07-15T06:00:00",
+      "name": "hemoglobin",
+      "value": 11.2,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-08-19T06:00:00",
+      "name": "hemoglobin",
+      "value": 11,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-10-05T06:00:00",
+      "name": "hemoglobin",
+      "value": 10.4,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-10-13T06:00:00",
+      "name": "hemoglobin",
+      "value": 10.6,
+      "unit": "g/dL"
+    }
+  ],
+  "recent_hospitalization": {
+    "discharged": "2026-10-10",
+    "reason": "Community acquired pneumonia with acute kidney injury. Treated with IV ceftriaxone and azithromycin, then oral cefpodoxime. Furosemide held 2 days.",
+    "source": "discharge_summary_2026-10-10"
+  },
+  "notes": [
+    {
+      "id": "note_d1",
+      "ts": "2026-10-10T16:00:00",
+      "author": "RN, readmission",
+      "text": "Returned from hospital. Alert and oriented x3. Lungs with faint crackles right base. Cefpodoxime to finish 10/14."
+    },
+    {
+      "id": "note_d2",
+      "ts": "2026-10-13T10:45:00",
+      "author": "Dr. Anita Shah (PCP)",
+      "text": "Post hospital visit. Cr 1.4, improving. Resume furosemide 40 mg daily. Weigh daily, call if gain over 2 lb."
+    },
+    {
+      "id": "note_d3",
+      "ts": "2026-10-15T21:30:00",
+      "author": "RN, evening shift",
+      "text": "Ate 50 percent of dinner. More tired than yesterday. Daughter Grace visited."
+    }
+  ]
+}

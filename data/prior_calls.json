@@ -1,0 +1,29 @@
+[
+  {
+    "id": "call_j_20261012",
+    "residentId": "res_joseph",
+    "ts": "2026-10-12T02:10:00",
+    "physician": "Dr. Priya Raman (on call)",
+    "reason": "Agitation and poor intake",
+    "disposition": "Treated in place",
+    "summary": "Restless, pulling at brief, ate little at dinner. Vitals normal, afebrile. Redirection and acetaminophen for possible discomfort. Daughter Maria reiterated no hospital transfer unless comfort cannot be achieved."
+  },
+  {
+    "id": "call_j_20261014",
+    "residentId": "res_joseph",
+    "ts": "2026-10-14T23:40:00",
+    "physician": "Dr. Kevin Osei (on call)",
+    "reason": "Poor oral intake",
+    "disposition": "Treated in place",
+    "summary": "Drinking about half of usual fluids. Afebrile, BP 122/70. Encourage fluids every hour while awake, recheck vitals in the morning, PCP to review."
+  },
+  {
+    "id": "call_m_20260925",
+    "residentId": "res_margaret",
+    "ts": "2026-09-25T01:15:00",
+    "physician": "Dr. Priya Raman (on call)",
+    "reason": "Left knee pain after transfer",
+    "disposition": "Treated in place",
+    "summary": "No fall. Knee pain after pivot transfer, full range of motion, bearing weight. Acetaminophen, mobile x-ray next morning was negative."
+  }
+]

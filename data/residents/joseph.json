@@ -1,0 +1,273 @@
+{
+  "id": "res_joseph",
+  "name": "Joseph Ramirez",
+  "age": 79,
+  "sex": "M",
+  "room": "118B",
+  "pcp": "Dr. Marcus Lee",
+  "admitted": "2024-06-18",
+  "diagnoses": [
+    "Alzheimer dementia, moderate",
+    "Benign prostatic hyperplasia",
+    "Recurrent urinary tract infection",
+    "Hypertension"
+  ],
+  "code_status": {
+    "value": "DNR/DNI",
+    "molst": "Do Not Hospitalize unless comfort cannot be achieved at the facility",
+    "source": "molst_2026-05-02"
+  },
+  "goals_of_care": {
+    "summary": "Comfort focused. Treat reversible problems at the facility. Daughter Maria Ramirez (health care proxy) prefers treatment at Bayview and no hospital transfer unless comfort cannot be achieved.",
+    "source": "family_meeting_note_2026-05-02"
+  },
+  "baseline": {
+    "mental_status": "Oriented to self only. Sundowning most evenings with mild restlessness, redirectable.",
+    "mobility": "Transfers and walks short distances with 1 assist.",
+    "source": "mds_quarterly_2026-09-20"
+  },
+  "allergies": [
+    "Sulfa (hives)"
+  ],
+  "medications": [
+    {
+      "name": "donepezil",
+      "dose": "10 mg at bedtime",
+      "class": "cholinesterase inhibitor"
+    },
+    {
+      "name": "tamsulosin",
+      "dose": "0.4 mg daily",
+      "class": "alpha blocker"
+    },
+    {
+      "name": "lisinopril",
+      "dose": "10 mg daily",
+      "class": "ACE inhibitor"
+    },
+    {
+      "name": "melatonin",
+      "dose": "3 mg at bedtime",
+      "class": "sleep aid"
+    },
+    {
+      "name": "acetaminophen",
+      "dose": "650 mg q6h PRN pain or fever",
+      "class": "analgesic"
+    }
+  ],
+  "vitals_history": [
+    {
+      "ts": "2026-10-02T08:00:00",
+      "sbp": 124,
+      "dbp": 72,
+      "hr": 77,
+      "rr": 17,
+      "temp_c": 36.9,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-03T08:00:00",
+      "sbp": 127,
+      "dbp": 75,
+      "hr": 76,
+      "rr": 17,
+      "temp_c": 36.8,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-04T08:00:00",
+      "sbp": 122,
+      "dbp": 71,
+      "hr": 72,
+      "rr": 17,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-05T08:00:00",
+      "sbp": 120,
+      "dbp": 72,
+      "hr": 74,
+      "rr": 16,
+      "temp_c": 36.8,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-06T08:00:00",
+      "sbp": 123,
+      "dbp": 75,
+      "hr": 71,
+      "rr": 17,
+      "temp_c": 36.6,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-07T08:00:00",
+      "sbp": 121,
+      "dbp": 71,
+      "hr": 76,
+      "rr": 18,
+      "temp_c": 36.5,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-08T08:00:00",
+      "sbp": 127,
+      "dbp": 72,
+      "hr": 71,
+      "rr": 17,
+      "temp_c": 36.6,
+      "spo2": 97,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-09T08:00:00",
+      "sbp": 123,
+      "dbp": 69,
+      "hr": 75,
+      "rr": 17,
+      "temp_c": 36.6,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-10T08:00:00",
+      "sbp": 122,
+      "dbp": 73,
+      "hr": 72,
+      "rr": 17,
+      "temp_c": 36.9,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-11T08:00:00",
+      "sbp": 126,
+      "dbp": 72,
+      "hr": 76,
+      "rr": 16,
+      "temp_c": 36.6,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-12T08:00:00",
+      "sbp": 122,
+      "dbp": 69,
+      "hr": 78,
+      "rr": 17,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-13T08:00:00",
+      "sbp": 124,
+      "dbp": 71,
+      "hr": 72,
+      "rr": 17,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-14T08:00:00",
+      "sbp": 122,
+      "dbp": 71,
+      "hr": 77,
+      "rr": 17,
+      "temp_c": 37.2,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-15T08:00:00",
+      "sbp": 123,
+      "dbp": 72,
+      "hr": 78,
+      "rr": 18,
+      "temp_c": 37.4,
+      "spo2": 97,
+      "o2": "RA",
+      "avpu": "A"
+    }
+  ],
+  "labs": [
+    {
+      "ts": "2026-07-22T06:00:00",
+      "name": "creatinine",
+      "value": 1,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-08-27T06:00:00",
+      "name": "creatinine",
+      "value": 1.1,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-10-01T06:00:00",
+      "name": "creatinine",
+      "value": 1.1,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-07-22T06:00:00",
+      "name": "hemoglobin",
+      "value": 13.2,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-08-27T06:00:00",
+      "name": "hemoglobin",
+      "value": 13,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-10-01T06:00:00",
+      "name": "hemoglobin",
+      "value": 12.9,
+      "unit": "g/dL"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_j1",
+      "ts": "2026-08-29T11:00:00",
+      "author": "Dr. Marcus Lee (PCP)",
+      "text": "E. coli UTI treated at facility with oral cefpodoxime, resolved. Third UTI this year."
+    },
+    {
+      "id": "note_j2",
+      "ts": "2026-10-12T09:30:00",
+      "author": "RN, day shift",
+      "text": "Overnight agitation per report, redirected. Ate 50 percent of breakfast. Daughter Maria updated."
+    },
+    {
+      "id": "note_j3",
+      "ts": "2026-10-15T15:00:00",
+      "author": "CNA flow sheet summary",
+      "text": "Fluid intake about 900 mL today, down from usual 1400 mL. Ate 25 to 50 percent of meals."
+    }
+  ]
+}

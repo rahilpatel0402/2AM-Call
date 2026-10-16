@@ -1,0 +1,15 @@
+{
+  "id": "fac_bayview",
+  "name": "Bayview Rehab and Nursing (synthetic)",
+  "overnight": {
+    "rn_on_site": true,
+    "iv_fluids": true,
+    "iv_antibiotics": true,
+    "stat_labs": { "available": true, "turnaround_hours": 4 },
+    "mobile_xray": { "available": true, "earliest": "06:00" },
+    "ct_imaging": false,
+    "oxygen_max_lpm": 5,
+    "telemetry": false,
+    "pharmacy_stat_delivery_hours": 3
+  }
+}

@@ -1,0 +1,18 @@
+[
+  { "speaker": "nurse", "text": "Hi, this is Ray, the night nurse at Bayview. I'm calling about Joseph Ramirez in 118B.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Hi Ray, what's going on with him?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "He has a temp of 38.0, I got it on the 11:30 check.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "Okay. How is he otherwise?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "He's a bit more confused than usual tonight. More restless, pulling at his blanket.", "delayMs": 2500 },
+  { "speaker": "doctor", "text": "Any cough or trouble breathing?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "No cough that I've heard. His breathing looks comfortable.", "delayMs": 2000 },
+  { "speaker": "doctor", "text": "What are his vitals?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "BP 128 over 74, pulse 92, respirations 18, and he's 95 percent on room air.", "delayMs": 2800 },
+  { "speaker": "doctor", "text": "Is he eating and drinking?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "He's been drinking less today. Day shift said he only took about half his fluids.", "delayMs": 2500 },
+  { "speaker": "doctor", "text": "Any urinary symptoms?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "His urine looks darker and it has a strong smell. He's in a brief so it's hard to tell about burning.", "delayMs": 2800 },
+  { "speaker": "doctor", "text": "Any vomiting or diarrhea?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "No vomiting, no diarrhea.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Okay. Give me a minute to think about the plan.", "delayMs": 1500 }
+]

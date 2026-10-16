@@ -1,0 +1,18 @@
+[
+  { "speaker": "nurse", "text": "Hi Doctor, this is Linda, the night nurse at Bayview Rehab. I'm calling about Margaret Ellis in room 212A.", "delayMs": 1500 },
+  { "speaker": "doctor", "text": "Hi Linda, go ahead.", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "She had an unwitnessed fall at about 1:40. The aide found her on the floor next to her bed.", "delayMs": 2500 },
+  { "speaker": "doctor", "text": "Okay. Is she hurt anywhere?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "She has a small bump on the left side of her forehead, maybe two centimeters. No bleeding.", "delayMs": 2500 },
+  { "speaker": "doctor", "text": "So she hit her head?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "We think so, the bump is new. She says she was trying to get to the bathroom.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "What are her vitals?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "BP 142 over 80, heart rate 78, respirations 18, temp 36.8, and her sat is 96 percent on room air.", "delayMs": 3000 },
+  { "speaker": "doctor", "text": "How is she mentally right now?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "She's a little confused. She knows her name but she thought it was morning and asked for her breakfast.", "delayMs": 2800 },
+  { "speaker": "doctor", "text": "Any weakness on one side, facial droop, or trouble speaking?", "delayMs": 2000 },
+  { "speaker": "nurse", "text": "No. She's moving all four, grips are equal, and her speech is clear.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "Any pain anywhere else? Hips?", "delayMs": 1500 },
+  { "speaker": "nurse", "text": "Her left hip is a little sore, but she can bear weight with help.", "delayMs": 2200 },
+  { "speaker": "doctor", "text": "Okay, give me a second to think about this.", "delayMs": 1500 }
+]

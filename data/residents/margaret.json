@@ -1,0 +1,274 @@
+{
+  "id": "res_margaret",
+  "name": "Margaret Ellis",
+  "age": 84,
+  "sex": "F",
+  "room": "212A",
+  "pcp": "Dr. Anita Shah",
+  "admitted": "2025-03-02",
+  "diagnoses": [
+    "Atrial fibrillation",
+    "Hypertension",
+    "Osteoarthritis, bilateral knees",
+    "Chronic kidney disease stage 3a"
+  ],
+  "code_status": {
+    "value": "Full code",
+    "molst": "Full treatment",
+    "source": "molst_2026-01-10"
+  },
+  "goals_of_care": {
+    "summary": "Full treatment. Would want hospital care if needed. Son Daniel Ellis is health care proxy.",
+    "source": "goc_note_2026-01-10"
+  },
+  "baseline": {
+    "mental_status": "Alert and oriented x3. Manages her own phone and follows conversation.",
+    "mobility": "Walks with rolling walker, standby assist.",
+    "source": "nursing_admission_assessment_2025-03-02"
+  },
+  "allergies": [
+    "Penicillin (rash)"
+  ],
+  "medications": [
+    {
+      "name": "apixaban",
+      "dose": "5 mg BID",
+      "class": "anticoagulant",
+      "high_risk": true
+    },
+    {
+      "name": "metoprolol succinate",
+      "dose": "50 mg daily",
+      "class": "beta blocker"
+    },
+    {
+      "name": "amlodipine",
+      "dose": "5 mg daily",
+      "class": "calcium channel blocker"
+    },
+    {
+      "name": "acetaminophen",
+      "dose": "650 mg q6h PRN pain",
+      "class": "analgesic"
+    },
+    {
+      "name": "cholecalciferol",
+      "dose": "2000 IU daily",
+      "class": "vitamin"
+    }
+  ],
+  "vitals_history": [
+    {
+      "ts": "2026-10-02T08:00:00",
+      "sbp": 129,
+      "dbp": 76,
+      "hr": 72,
+      "rr": 16,
+      "temp_c": 36.7,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-03T08:00:00",
+      "sbp": 139,
+      "dbp": 76,
+      "hr": 70,
+      "rr": 16,
+      "temp_c": 36.5,
+      "spo2": 97,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-04T08:00:00",
+      "sbp": 138,
+      "dbp": 76,
+      "hr": 67,
+      "rr": 15,
+      "temp_c": 36.6,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-05T08:00:00",
+      "sbp": 130,
+      "dbp": 78,
+      "hr": 70,
+      "rr": 17,
+      "temp_c": 36.8,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-06T08:00:00",
+      "sbp": 134,
+      "dbp": 73,
+      "hr": 74,
+      "rr": 16,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-07T08:00:00",
+      "sbp": 131,
+      "dbp": 72,
+      "hr": 65,
+      "rr": 17,
+      "temp_c": 36.9,
+      "spo2": 97,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-08T08:00:00",
+      "sbp": 135,
+      "dbp": 78,
+      "hr": 71,
+      "rr": 16,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-09T08:00:00",
+      "sbp": 133,
+      "dbp": 77,
+      "hr": 69,
+      "rr": 15,
+      "temp_c": 36.7,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-10T08:00:00",
+      "sbp": 134,
+      "dbp": 75,
+      "hr": 67,
+      "rr": 15,
+      "temp_c": 36.9,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-11T08:00:00",
+      "sbp": 130,
+      "dbp": 80,
+      "hr": 69,
+      "rr": 16,
+      "temp_c": 36.6,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-12T08:00:00",
+      "sbp": 139,
+      "dbp": 74,
+      "hr": 72,
+      "rr": 16,
+      "temp_c": 36.7,
+      "spo2": 96,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-13T08:00:00",
+      "sbp": 131,
+      "dbp": 78,
+      "hr": 73,
+      "rr": 15,
+      "temp_c": 36.5,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-14T08:00:00",
+      "sbp": 135,
+      "dbp": 75,
+      "hr": 67,
+      "rr": 16,
+      "temp_c": 36.7,
+      "spo2": 95,
+      "o2": "RA",
+      "avpu": "A"
+    },
+    {
+      "ts": "2026-10-15T08:00:00",
+      "sbp": 139,
+      "dbp": 75,
+      "hr": 73,
+      "rr": 16,
+      "temp_c": 36.8,
+      "spo2": 97,
+      "o2": "RA",
+      "avpu": "A"
+    }
+  ],
+  "labs": [
+    {
+      "ts": "2026-07-14T06:00:00",
+      "name": "creatinine",
+      "value": 1.2,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-08-18T06:00:00",
+      "name": "creatinine",
+      "value": 1.3,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-10-06T06:00:00",
+      "name": "creatinine",
+      "value": 1.3,
+      "unit": "mg/dL"
+    },
+    {
+      "ts": "2026-07-14T06:00:00",
+      "name": "hemoglobin",
+      "value": 12.1,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-08-18T06:00:00",
+      "name": "hemoglobin",
+      "value": 11.9,
+      "unit": "g/dL"
+    },
+    {
+      "ts": "2026-10-06T06:00:00",
+      "name": "hemoglobin",
+      "value": 12,
+      "unit": "g/dL"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_m1",
+      "ts": "2026-10-06T10:15:00",
+      "author": "Dr. Anita Shah (PCP)",
+      "text": "AF rate controlled on metoprolol. Continue apixaban 5 mg BID, does not meet dose reduction criteria. Cr stable 1.3."
+    },
+    {
+      "id": "note_m2",
+      "ts": "2026-10-13T14:30:00",
+      "author": "PT, J. Morales",
+      "text": "Ambulating 150 feet with rolling walker, standby assist. Steady. Reminded to call for help at night."
+    },
+    {
+      "id": "note_m3",
+      "ts": "2026-10-15T22:00:00",
+      "author": "RN, evening shift",
+      "text": "Alert and oriented x3, watching TV, pleasant. No complaints. Call light within reach."
+    }
+  ]
+}
