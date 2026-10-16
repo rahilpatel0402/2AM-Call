@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import type { CoveredItem, ExtractedFacts, PriorCallMemory, ReportedVitals, Segment, UnsaidItem } from "./types";
+import type { CoveredItem, Delta, ExtractedFacts, FeasibilityItem, News2, PriorCallMemory, RedFlag, ReportedVitals, Scores, Segment, UnsaidItem } from "./types";
 
 // ---------- shared card chrome ----------
 
@@ -187,9 +187,10 @@ function formatTs(ts: string) {
   return isNaN(d.getTime()) ? ts : d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function PriorCallsCard({ items, backend, started }: { items: PriorCallMemory[]; backend: string | null; started: boolean }) {
+export function PriorCallsCard({ items, backend, started, note }: { items: PriorCallMemory[]; backend: string | null; started: boolean; note?: string | null }) {
   return (
     <Card title="Remembered from prior night calls" icon="history" meta={started && items.length > 0 && <span className="count">{items.length}</span>}>
+      {note && <div className="repeat-note">{note}</div>}
       {!started && <p className="empty">Recalled from SurrealDB Agent Memory when a call starts.</p>}
       {started && backend === null && <p className="empty">Recalling.</p>}
       {started && backend !== null && !items.length && <p className="empty">No prior night calls on record.</p>}
@@ -205,6 +206,128 @@ export function PriorCallsCard({ items, backend, started }: { items: PriorCallMe
           );
         })}
       </ul>
+    </Card>
+  );
+}
+
+// ---------- red flags (deterministic rules) ----------
+
+export function RedFlagsCard({ flags, goalsNote, started }: { flags: RedFlag[]; goalsNote: string | null; started: boolean }) {
+  const firing = flags.length > 0;
+  return (
+    <section className={`card flags ${firing ? "flags-on" : started ? "flags-clear" : ""}`}>
+      <header className="card-head">
+        <span className="card-icon"><Icon name="flag" /></span>
+        <h2>{firing ? `Red flags · ${flags.length}` : "Red flags"}</h2>
+        {firing && <span className="flags-banner">Consider urgent evaluation / transfer. Physician decision.</span>}
+      </header>
+      <div className="card-body">
+        {!started && <p className="empty">Fixed clinical rules run on every update. The AI cannot add, remove, or soften a red flag.</p>}
+        {started && !firing && <p className="no-flags">No rule based red flags at this point in the call.</p>}
+        {firing && (
+          <div className="flag-grid">
+            {flags.map((f) => (
+              <div key={f.id} className="flag">
+                <div className="flag-title">{f.title}</div>
+                <div className="flag-why">{f.why}</div>
+                <ul className="flag-evidence">
+                  {f.evidence.map((e) => <li key={e}>{e}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+        {started && goalsNote && <div className="goals-note">{goalsNote}</div>}
+      </div>
+    </section>
+  );
+}
+
+// ---------- vitals vs baseline + NEWS2 ----------
+
+const BAND_LABEL: Record<News2["band"], string> = { low: "Low", "low-medium": "Low-medium", medium: "Medium", high: "High" };
+
+function fmt(key: string, n: number) {
+  return key === "temp_c" ? n.toFixed(1) : String(Math.round(n * 10) / 10);
+}
+
+export function VitalsCard({ scores }: { scores: Scores | null }) {
+  if (!scores) {
+    return (
+      <Card title="Vitals vs baseline · NEWS2" icon="pulse">
+        <p className="empty">Tonight's vitals against this resident's own 14 day baseline, with NEWS2 computed in code.</p>
+      </Card>
+    );
+  }
+  const { news2, deltas, baseline } = scores;
+  // Flag a delta as notable when it moves meaningfully off this resident's own baseline.
+  const notable = (d: Delta) =>
+    (d.key === "sbp" && Math.abs(d.diff) >= 20) || (d.key === "hr" && Math.abs(d.diff) >= 15) ||
+    (d.key === "rr" && Math.abs(d.diff) >= 4) || (d.key === "spo2" && d.diff <= -3) || (d.key === "temp_c" && Math.abs(d.diff) >= 1);
+  return (
+    <Card title="Vitals vs baseline · NEWS2" icon="pulse">
+      <div className={`news2 band-${news2.band}`}>
+        <div className="news2-score">{news2.total}</div>
+        <div>
+          <div className="news2-label">NEWS2 · {BAND_LABEL[news2.band]}</div>
+          <div className="news2-parts">
+            {news2.parts.filter((p) => p.points > 0).map((p) => `${p.param} +${p.points}`).join(" · ") || "All parameters 0"}
+          </div>
+          {!news2.complete && <div className="source">Some parameters use last charted values.</div>}
+        </div>
+      </div>
+      <table className="deltas">
+        <thead>
+          <tr><th></th><th>Tonight</th><th>Usual</th><th>Change</th></tr>
+        </thead>
+        <tbody>
+          {deltas.map((d) => (
+            <tr key={d.key} className={notable(d) ? "notable" : ""}>
+              <td className="d-label">{d.label}</td>
+              <td className="d-now">{fmt(d.key, d.current)}{d.from === "chart" && <span className="from-chart" title="Not stated on the call; last charted value">chart</span>}</td>
+              <td>{fmt(d.key, d.baseline)}</td>
+              <td className="d-diff">{d.diff > 0 ? "▲" : d.diff < 0 ? "▼" : ""} {d.diff === 0 ? "0" : fmt(d.key, Math.abs(d.diff))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="source">Usual = {baseline.source}.</p>
+    </Card>
+  );
+}
+
+// ---------- facility capability tonight ----------
+
+export function FacilityCard({ items, started }: { items: FeasibilityItem[]; started: boolean }) {
+  const can = items.filter((i) => i.available);
+  const cannot = items.filter((i) => !i.available);
+  return (
+    <Card title="Facility capability tonight" icon="building">
+      {!started && <p className="empty">What this facility can and cannot do overnight, matched to tonight's problem.</p>}
+      {started && !items.length && <p className="empty">Capabilities appear as the problem becomes clear.</p>}
+      {cannot.length > 0 && (
+        <div className="cap-group">
+          <div className="cap-title cap-no">Cannot tonight</div>
+          {cannot.map((i) => (
+            <div key={i.capability} className="cap cap-no-row">
+              <span className="cap-mark">✕</span>
+              <div><strong>{i.capability}</strong> <span className="cap-detail">{i.detail}</span><div className="source">for: {i.need}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+      {can.length > 0 && (
+        <div className="cap-group">
+          <div className="cap-title cap-yes">Can tonight</div>
+          {can.map((i) => (
+            <div key={i.capability} className="cap">
+              <span className="cap-mark cap-mark-yes">✓</span>
+              <div><strong>{i.capability}</strong> <span className="cap-detail">{i.detail}</span><div className="source">for: {i.need}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+      {items.length > 0 && <p className="source">Source: facility overnight capability profile. Shown for information, not as a recommendation.</p>}
     </Card>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { Card, HeardCard, Icon, PriorCallsCard, Transcript, UnsaidCard } from "./Panels";
+import { Card, FacilityCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -118,6 +118,7 @@ export default function App() {
   const callActive = call?.status === "live";
   const ended = call?.status === "ended";
   const elapsed = useElapsed(call?.startedAt, !!callActive);
+  const clock = call ? new Date(call.clockStart).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
   const source = scribe.isConnected ? "Live microphone" : call?.replaying ? "Replay of recorded call" : null;
 
   return (
@@ -172,7 +173,7 @@ export default function App() {
             <>
               <span className="pulse" />
               <div>
-                <div className="call-status-title">Call in progress · {elapsed}</div>
+                <div className="call-status-title">Call in progress · {clock} · {elapsed}</div>
                 {source && <div className="call-status-sub">{source}</div>}
               </div>
             </>
@@ -198,9 +199,7 @@ export default function App() {
         </Card>
 
         <div className="panels">
-          <Card title="Red flags" icon="flag" tone="neutral" className="flags">
-            <p className="empty">Rule based red flags will appear here. The physician makes every disposition decision.</p>
-          </Card>
+          <RedFlagsCard flags={call?.redFlags ?? []} goalsNote={call?.goalsNote ?? null} started={!!call?.facts} />
 
           <div className="row row-primary">
             <UnsaidCard items={call?.facts ? call.unsaid : []} covered={call?.covered ?? []} started={!!call?.facts} ended={!!ended} />
@@ -208,16 +207,12 @@ export default function App() {
           </div>
 
           <div className="row">
-            <Card title="Vitals vs baseline · NEWS2" icon="pulse">
-              <p className="empty">Compared with this resident's own 14 day baseline.</p>
-            </Card>
-            <Card title="Facility capability tonight" icon="building">
-              <p className="empty">What this facility can and cannot do overnight.</p>
-            </Card>
+            <VitalsCard scores={call?.scores ?? null} />
+            <FacilityCard items={call?.feasibility ?? []} started={!!call?.facts} />
           </div>
 
           <div className="row">
-            <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} />
+            <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} note={call?.priorCallsNote} />
             <Card title="Ask the chart" icon="search">
               <p className="empty">Free text chart questions, answered in an isolated sandbox.</p>
             </Card>

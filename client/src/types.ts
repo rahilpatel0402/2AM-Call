@@ -36,15 +36,36 @@ export type CoveredItem = { item: string; label: string; quote: string };
 
 export type PriorCallMemory = { ts: string; text: string; source: string; backend: string };
 
+export type RedFlag = { id: string; title: string; why: string; evidence: string[] };
+
+export type VitalKey = "sbp" | "dbp" | "hr" | "rr" | "temp_c" | "spo2";
+export type VitalReading = { value: number; from: "call" | "chart"; evidence: string };
+export type Delta = { key: string; label: string; current: number; baseline: number; diff: number; from: "call" | "chart" };
+export type News2 = { total: number; parts: { param: string; value: string; points: number }[]; band: "low" | "low-medium" | "medium" | "high"; anyThree: boolean; complete: boolean };
+export type Scores = {
+  current: Partial<Record<VitalKey, VitalReading>> & { o2: { value: string; onOxygen: boolean; from: string; evidence: string }; consciousness: { value: string; from: string; evidence: string } };
+  baseline: Partial<Record<VitalKey, number>> & { n: number; source: string };
+  deltas: Delta[];
+  news2: News2;
+};
+
+export type FeasibilityItem = { need: string; capability: string; available: boolean; detail: string; source: string };
+
 export type CallState = {
   callId: string;
   residentId: string;
   startedAt: number;
+  clockStart: number;
   segments: Segment[];
   facts: ExtractedFacts | null;
   unsaid: UnsaidItem[];
   covered: CoveredItem[];
   priorCalls: PriorCallMemory[];
+  priorCallsNote: string | null;
+  redFlags: RedFlag[];
+  goalsNote: string | null;
+  scores: Scores | null;
+  feasibility: FeasibilityItem[];
   memoryBackend: string | null;
   status: "live" | "ended";
   replaying: boolean;

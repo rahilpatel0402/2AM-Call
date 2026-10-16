@@ -5,6 +5,9 @@ import { getScript, type ScriptLine } from "./db.js";
 import { runPipeline } from "./pipeline.js";
 import { recallForResident } from "./memory.js";
 import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
+import type { Scores } from "./scores.js";
+import type { RedFlag } from "./safety/rules.js";
+import type { FeasibilityItem } from "./feasibility.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -17,13 +20,17 @@ export type CallState = {
   facts: ExtractedFacts | null;
   unsaid: UnsaidItem[];
   covered: CoveredItem[];
-  redFlags: unknown[];         // Phase 4
-  scores: unknown | null;      // Phase 4
-  feasibility: unknown[];      // Phase 4
+  redFlags: RedFlag[];
+  goalsNote: string | null;
+  scores: Scores | null;
+  feasibility: FeasibilityItem[];
   priorCalls: PriorCallMemory[];
+  priorCallsNote: string | null;
   memoryBackend: string | null;
   status: "live" | "ended";
   replaying: boolean;
+  // Clock the call is "happening" at. Replays run on scenario time (2:05 AM); live calls use real time.
+  clockStart: number;
   processing: boolean;
   pipelineError: string | null;
 };
@@ -42,12 +49,15 @@ export function createCall(residentId: string): CallState {
     unsaid: [],
     covered: [],
     redFlags: [],
+    goalsNote: null,
     scores: null,
     feasibility: [],
     priorCalls: [],
+    priorCallsNote: null,
     memoryBackend: null,
     status: "live",
     replaying: false,
+    clockStart: Date.now(),
     processing: false,
     pipelineError: null,
   };
@@ -55,10 +65,20 @@ export function createCall(residentId: string): CallState {
   // Recall this resident's prior night calls from Agent Memory at call start.
   recallForResident(residentId).then((r) => {
     state.priorCalls = r.items;
+    state.priorCallsNote = priorCallsNote(r.items);
     state.memoryBackend = r.backend;
     broadcast(state);
   });
   return state;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
+
+// "3rd call this week for this resident" when 2 or more prior calls in the last 7 days.
+function priorCallsNote(items: PriorCallMemory[]): string | null {
+  const recent = items.filter((m) => m.ts && Date.now() - new Date(m.ts).getTime() <= 7 * DAY).length;
+  return recent >= 2 ? `${ordinal(recent + 1)} call this week for this resident` : null;
 }
 
 export function getCall(callId: string): CallState | undefined {
@@ -140,6 +160,9 @@ export async function replay(state: CallState, scriptName: string): Promise<void
   const lines: ScriptLine[] | undefined = getScript(scriptName);
   if (!lines) throw new Error(`unknown script "${scriptName}"`);
   state.replaying = true;
+  const scenario = new Date();
+  scenario.setHours(2, 5, 0, 0);
+  state.clockStart = scenario.getTime();
   broadcast(state);
   for (const line of lines) {
     await sleep(line.delayMs);
