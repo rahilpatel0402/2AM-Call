@@ -8,7 +8,7 @@ import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from ".
 import type { Scores } from "./scores.js";
 import type { RedFlag } from "./safety/rules.js";
 import type { FeasibilityItem } from "./feasibility.js";
-import { anchorReady, readChartFromEhr, type EhrAgent } from "./anchor.js";
+import { anchorReady, prepareEhrSession, readChartFromEhr, type EhrAgent, type PreparedSession } from "./anchor.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -57,11 +57,22 @@ export async function chartFor(state: CallState): Promise<Resident> {
   return getResident(state.residentId)!;
 }
 
+const preparedSessions = new Map<string, Promise<PreparedSession>>();
+
+// At call start: open the portal in the cloud browser so its live view is already streaming.
+export function prepareEhr(state: CallState) {
+  state.wantsEhr = true;
+  state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening the facility EHR portal", found: [], matchesChart: null, ms: null };
+  const p = prepareEhrSession(state.ehrAgent, () => broadcast(state));
+  p.catch(() => {}); // failures surface when the read starts
+  preparedSessions.set(state.callId, p);
+}
+
 function startEhrRead(state: CallState) {
   const resident = getResident(state.residentId)!;
-  state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+  state.ehrAgent ??= { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
   state.chartSource = "pending";
-  const pending = readChartFromEhr(resident, state.ehrAgent, () => broadcast(state))
+  const pending = readChartFromEhr(resident, state.ehrAgent, () => broadcast(state), preparedSessions.get(state.callId))
     .then((chart) => {
       charts.set(state.callId, { chart, pending: null });
       state.chartSource = "ehr";

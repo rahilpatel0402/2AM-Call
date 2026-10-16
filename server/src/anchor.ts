@@ -223,7 +223,7 @@ export async function runEhrPost(r: Resident, physician: string, note: string, a
       const s = await openSession(`${base}/ehr/`);
       sessionId = s.id;
       Object.assign(agent, { task: "post", status: "posting", liveViewUrl: s.liveViewUrl, found: [], matchesChart: null });
-      await step("Cloud browser open on the facility EHR portal", 1500);
+      await step("Cloud browser open on the facility EHR portal", 3000); // let the live view connect first
       const browser = await chromium.connectOverCDP(s.cdpUrl);
       const context = browser.contexts()[0] ?? (await browser.newContext());
       const page = context.pages()[0] ?? (await context.newPage());
@@ -261,7 +261,20 @@ export async function runEhrPost(r: Resident, physician: string, note: string, a
 
 // Called on the first transcript line. Signs in, opens the resident, reads every chart section (about 5 to 8 s),
 // and returns a chart built ONLY from what the portal shows (identity fields come from the call setup).
-export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: () => void): Promise<Resident> {
+export type PreparedSession = { id: string; liveViewUrl: string; cdpUrl: string; liveSince: number };
+
+// Opens the cloud browser on the portal sign-in page as soon as the call starts, so the live view stream is
+// already connected (and visible) before the agent starts signing in.
+export async function prepareEhrSession(agent: EhrAgent, changed: () => void): Promise<PreparedSession> {
+  const s = await openSession(`${ehrPublicUrl()}/ehr/`);
+  Object.assign(agent, { liveViewUrl: s.liveViewUrl, detail: "Facility EHR portal open. Waiting for the resident on the call." });
+  changed();
+  return { ...s, liveSince: Date.now() };
+}
+
+const LIVE_VIEW_WARMUP_MS = 3000;
+
+export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: () => void, prepared?: Promise<PreparedSession>): Promise<Resident> {
   const base = ehrPublicUrl()!;
   const t0 = Date.now();
   let sessionId: string | null = null;
@@ -272,10 +285,11 @@ export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: ()
   };
   return span("anchor.ehr_read_chart", "TOOL", { "resident.id": r.id, "input.value": `${base}/ehr/` }, async () => {
     try {
-      const s = await openSession(`${base}/ehr/`);
+      const s = prepared ? await prepared : { ...(await openSession(`${base}/ehr/`)), liveSince: Date.now() };
       sessionId = s.id;
       Object.assign(agent, { task: "pull", status: "reading", liveViewUrl: s.liveViewUrl });
-      await step("Cloud browser open on the facility EHR portal", 800);
+      // Do not act until the live view has had time to connect, so every step is visible.
+      await step("Facility EHR portal open", Math.max(800, LIVE_VIEW_WARMUP_MS - (Date.now() - s.liveSince)));
       const browser = await chromium.connectOverCDP(s.cdpUrl);
       const context = browser.contexts()[0] ?? (await browser.newContext());
       const page = context.pages()[0] ?? (await context.newPage());
