@@ -26,6 +26,9 @@ function shortDate(ts: string): string {
   return new Date(localTime(ts)).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// When the chart was read from the facility EHR portal by Anchor, list-type sources say so.
+const fromEhr = (r: Resident, label: string) => (/Anchor/.test(r.code_status.source) ? `facility EHR portal (Anchor): ${label}` : label);
+
 function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemory[], now: number): UnsaidItem | null {
   switch (item) {
     case "anticoagulation": {
@@ -36,7 +39,7 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
       return {
         item, label,
         value: meds.map((m) => `${m.name} ${m.dose}`).join(", "),
-        source: { doc: r.id, field: `medications[${idx}]`, label: "medication list" },
+        source: { doc: r.id, field: `medications[${idx}]`, label: fromEhr(r, "medication list") },
       };
     }
     case "code_status":
@@ -87,14 +90,14 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
       return {
         item, label: "Recent labs",
         value: parts.join(", "),
-        source: { doc: r.id, field: "labs", label: "lab results" },
+        source: { doc: r.id, field: "labs", label: fromEhr(r, "lab results") },
       };
     }
     case "allergies":
       return {
         item, label: "Allergies",
         value: r.allergies.join(", "),
-        source: { doc: r.id, field: "allergies", label: "allergy list" },
+        source: { doc: r.id, field: "allergies", label: fromEhr(r, "allergy list") },
       };
   }
 }

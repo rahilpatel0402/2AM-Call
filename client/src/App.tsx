@@ -272,6 +272,11 @@ export default function App() {
               <span>Room {r.room}</span>
               <span>{detail?.facility.name}</span>
               <span>Primary doctor {r.pcp}</span>
+              {call && (
+                <span className={`chart-chip chart-${call.chartSource}`}>
+                  {call.chartSource === "ehr" ? "✓ Chart from facility EHR (Anchor)" : call.chartSource === "pending" ? "Reading facility EHR" : "Chart: local copy"}
+                </span>
+              )}
             </div>
           )}
         </div>

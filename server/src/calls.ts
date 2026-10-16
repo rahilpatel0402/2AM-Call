@@ -1,14 +1,14 @@
 // In-memory call state. Every change is pushed to SSE subscribers as the full CallState.
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
-import { getScript, type ScriptLine } from "./db.js";
+import { getResident, getScript, type Resident, type ScriptLine } from "./db.js";
 import { runPipeline } from "./pipeline.js";
 import { recallForResident } from "./memory.js";
 import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
 import type { Scores } from "./scores.js";
 import type { RedFlag } from "./safety/rules.js";
 import type { FeasibilityItem } from "./feasibility.js";
-import type { EhrAgent } from "./anchor.js";
+import { anchorReady, readChartFromEhr, type EhrAgent } from "./anchor.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -39,7 +39,45 @@ export type CallState = {
   signedBy: string | null;
   ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
   ehrAgent: EhrAgent | null;
+  // Chart for this call: read from the facility EHR portal by Anchor, or the local copy as fallback.
+  chartSource: "ehr" | "local" | "pending";
+  wantsEhr: boolean;
 };
+
+const charts = new Map<string, { chart: Resident | null; pending: Promise<Resident | null> | null }>();
+
+// The chart every pipeline step uses for this call. Waits (bounded) for an in-flight EHR read.
+export async function chartFor(state: CallState): Promise<Resident> {
+  const c = charts.get(state.callId);
+  if (c?.chart) return c.chart;
+  if (c?.pending) {
+    const got = await Promise.race([c.pending, new Promise<null>((res) => setTimeout(() => res(null), 25_000))]);
+    if (got) return got;
+  }
+  return getResident(state.residentId)!;
+}
+
+function startEhrRead(state: CallState) {
+  const resident = getResident(state.residentId)!;
+  state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+  state.chartSource = "pending";
+  const pending = readChartFromEhr(resident, state.ehrAgent, () => broadcast(state))
+    .then((chart) => {
+      charts.set(state.callId, { chart, pending: null });
+      state.chartSource = "ehr";
+      return chart;
+    })
+    .catch(() => {
+      charts.set(state.callId, { chart: null, pending: null });
+      state.chartSource = "local";
+      return null;
+    })
+    .finally(() => {
+      broadcast(state);
+      schedulePipeline(state); // refresh the panels with the chart as soon as it arrives
+    });
+  charts.set(state.callId, { chart: null, pending });
+}
 
 const calls = new Map<string, CallState>();
 const subscribers = new Map<string, Set<Response>>();
@@ -71,6 +109,8 @@ export function createCall(residentId: string): CallState {
     signedBy: null,
     ehrPost: null,
     ehrAgent: null,
+    chartSource: "local",
+    wantsEhr: false,
   };
   calls.set(state.callId, state);
   // Recall this resident's prior night calls from Agent Memory at call start.
@@ -121,6 +161,8 @@ export function subscribe(state: CallState, res: Response) {
 export function addSegment(state: CallState, text: string, speaker: Speaker = "unknown"): Segment {
   const seg: Segment = { id: randomUUID().slice(0, 8), ts: Date.now(), speaker, text: text.trim() };
   state.segments.push(seg);
+  // The nurse's first line (facility, resident, room) starts the EHR read.
+  if (state.wantsEhr && state.segments.length === 1 && anchorReady().ok) startEhrRead(state);
   broadcast(state);
   schedulePipeline(state);
   return seg;

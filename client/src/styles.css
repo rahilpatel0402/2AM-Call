@@ -414,3 +414,7 @@ body { margin: 0; background: var(--bg); }
 .pip-found { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .pip-chip { font-size: 0.7rem; font-weight: 700; background: var(--green-bg); color: var(--green); padding: 2px 8px; border-radius: 10px; animation: slide-in 0.3s ease-out; }
 .pip-min .pip-head { border-radius: 10px; }
+.chart-chip { font-size: 0.75rem; font-weight: 800; padding: 2px 10px; border-radius: 12px; }
+.chart-ehr { background: var(--green-bg); color: var(--green); }
+.chart-pending { background: var(--blue-bg); color: var(--blue); }
+.chart-local { background: #f1f5f9; color: var(--muted); }

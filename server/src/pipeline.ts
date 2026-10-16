@@ -4,7 +4,7 @@
 //   3. scores.ts     current vitals, baseline deltas, NEWS2 (pure TS)
 //   4. safety/rules  deterministic red flags (no LLM input except validated facts)
 //   5. feasibility   facility capability tonight
-import type { CallState } from "./calls.js";
+import { chartFor, type CallState } from "./calls.js";
 import { getFacilityForResident, getResident } from "./db.js";
 import { extractFacts } from "./extract.js";
 import { computeCovered, computeUnsaid } from "./unsaid.js";
@@ -20,8 +20,8 @@ function callClock(state: CallState): Date {
 
 // Traced in Arize: one session per call, one pipeline.run trace per update, Bedrock spans auto-captured.
 export async function runPipeline(state: CallState): Promise<void> {
-  const resident = getResident(state.residentId);
-  if (!resident || !state.segments.length) return;
+  if (!getResident(state.residentId) || !state.segments.length) return;
+  const resident = await chartFor(state); // facility EHR chart read by Anchor, or the local copy
   await inSession(state.callId, () =>
     span("pipeline.run", "CHAIN", { "call.id": state.callId, "resident.id": resident.id, "segments.count": state.segments.length, "input.value": state.segments.at(-1)!.text }, () =>
       runSteps(state, resident),

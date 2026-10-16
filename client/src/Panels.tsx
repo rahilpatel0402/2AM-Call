@@ -542,6 +542,13 @@ export type EhrAgent = {
 
 export function EhrAgentPip({ agent }: { agent: EhrAgent }) {
   const [min, setMin] = useState(false);
+  // After reading the chart the window tucks away; it opens again when posting the signed note.
+  useEffect(() => {
+    if (agent.task === "pull" && (agent.status === "done" || agent.status === "failed")) {
+      const t = setTimeout(() => setMin(true), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [agent.status, agent.task]);
   const working = agent.status === "starting" || agent.status === "reading" || agent.status === "posting";
   const title = agent.task === "post" ? "Posting signed note to facility EHR" : "Reading facility EHR";
   return (

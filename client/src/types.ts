@@ -76,4 +76,5 @@ export type CallState = {
   signedBy: string | null;
   ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
   ehrAgent: import("./Panels").EhrAgent | null;
+  chartSource: "ehr" | "local" | "pending";
 };

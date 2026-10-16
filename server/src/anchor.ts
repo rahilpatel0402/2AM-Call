@@ -256,3 +256,97 @@ export async function runEhrPost(r: Resident, physician: string, note: string, a
     }
   }, () => ({ "anchor.status": agent.status, "anchor.ms": agent.ms ?? 0 }));
 }
+
+// ---------- fast chart read: drives the Anchor browser over CDP and parses the portal into a chart ----------
+
+// Called on the first transcript line. Signs in, opens the resident, reads every chart section (about 5 to 8 s),
+// and returns a chart built ONLY from what the portal shows (identity fields come from the call setup).
+export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: () => void): Promise<Resident> {
+  const base = ehrPublicUrl()!;
+  const t0 = Date.now();
+  let sessionId: string | null = null;
+  const step = async (detail: string, pauseMs = 400) => {
+    agent.detail = detail;
+    changed();
+    await new Promise((res) => setTimeout(res, pauseMs));
+  };
+  return span("anchor.ehr_read_chart", "TOOL", { "resident.id": r.id, "input.value": `${base}/ehr/` }, async () => {
+    try {
+      const s = await openSession(`${base}/ehr/`);
+      sessionId = s.id;
+      Object.assign(agent, { task: "pull", status: "reading", liveViewUrl: s.liveViewUrl });
+      await step("Cloud browser open on the facility EHR portal", 800);
+      const browser = await chromium.connectOverCDP(s.cdpUrl);
+      const context = browser.contexts()[0] ?? (await browser.newContext());
+      const page = context.pages()[0] ?? (await context.newPage());
+      if (!page.url().includes("/ehr")) await page.goto(`${base}/ehr/`);
+      await step("Signing in");
+      await page.fill("#username", EHR_DEMO_USER);
+      await page.fill("#password", EHR_DEMO_PASSWORD);
+      await page.click("button[type=submit]");
+      await page.waitForURL(/\/ehr\/residents/);
+      await step(`Opening ${r.name}`);
+      await page.click(`a:has-text("${r.name}")`);
+      await page.waitForSelector("#medications");
+
+      const text = async (sel: string) => ((await page.locator(sel).count()) ? (await page.locator(sel).innerText()).trim() : "");
+      const rows = (sel: string) => page.$$eval(`${sel} tr`, (trs) => trs.slice(1).map((tr) => Array.from(tr.querySelectorAll("td")).map((td) => (td.textContent ?? "").trim())));
+
+      await step("Reading code status, goals of care, baseline, allergies", 300);
+      const codeText = await text("#code-status");
+      const [codeValue, molst = ""] = codeText.split(/\.\s*MOLST:\s*/);
+      const goals = await text("#goals");
+      const baselineText = await text("#baseline");
+      const allergies = (await text("#allergies")).split(/,\s*/).filter(Boolean);
+      const hosp = await text("#hospitalization");
+
+      await page.locator("#medications").scrollIntoViewIfNeeded();
+      await step("Reading active medications", 300);
+      const meds = (await rows("#medications")).map(([name, dose, cls]) => ({ name, dose, ...(cls ? { class: cls } : {}) }));
+
+      await page.locator("#vitals").scrollIntoViewIfNeeded();
+      await step("Reading 14 days of vital signs", 300);
+      const vitals = (await rows("#vitals")).map(([ts, bp, hr, rr, temp, sat]) => {
+        const [sbp, dbp] = bp.split("/").map(Number);
+        const [spo2, ...o2] = sat.replace("%", "").split(/\s+/);
+        return { ts: ts.replace(" ", "T") + ":00", sbp, dbp, hr: Number(hr), rr: Number(rr), temp_c: Number(temp), spo2: Number(spo2), o2: o2.join(" ") || "RA", avpu: "A" as const };
+      }).reverse();
+
+      await page.locator("#labs").scrollIntoViewIfNeeded();
+      await step("Reading lab results", 300);
+      const labs = (await rows("#labs")).map(([date, name, value, unit]) => ({ ts: `${date}T06:00:00`, name, value: Number(value), unit }));
+
+      const src = "facility EHR portal (Anchor)";
+      const mental = /Mental status:\s*(.*?)\s*Mobility:/.exec(baselineText)?.[1] ?? baselineText;
+      const mobility = /Mobility:\s*(.*)$/.exec(baselineText)?.[1] ?? "";
+      const hospMatch = /Discharged\s+(\d{4}-\d{2}-\d{2}):\s*(.*)$/.exec(hosp);
+      const chart: Resident = {
+        ...r, // identity (id, name, age, sex, room, pcp, admitted, diagnoses, notes) from the call setup
+        code_status: { value: codeValue.trim(), molst: molst.trim(), source: src },
+        goals_of_care: { summary: goals, source: src },
+        baseline: { mental_status: mental, mobility, source: src },
+        allergies,
+        medications: meds,
+        vitals_history: vitals,
+        labs,
+        recent_hospitalization: hospMatch ? { discharged: hospMatch[1], reason: hospMatch[2], source: src } : undefined,
+      };
+      if (!meds.length || !vitals.length || !chart.code_status.value) throw new Error("chart sections missing in the portal page");
+
+      Object.assign(agent, {
+        status: "done",
+        found: [`${meds.length} medications`, "Code status / MOLST", "Goals of care", "Baseline", "Allergies", ...(hospMatch ? ["Recent hospitalization"] : []), `${vitals.length} days of vitals`, `${labs.length} lab results`],
+        matchesChart: true,
+        ms: Date.now() - t0,
+        detail: "Chart read from the facility EHR portal. The dashboard now uses it.",
+      });
+      return chart;
+    } catch (err) {
+      Object.assign(agent, { status: "failed", detail: `${(err as Error).message.slice(0, 140)}. Using the local chart copy.`, ms: Date.now() - t0 });
+      throw err;
+    } finally {
+      changed();
+      if (sessionId) setTimeout(() => void closeSession(sessionId!), 5_000);
+    }
+  }, () => ({ "anchor.status": agent.status, "anchor.found": agent.found.join(", "), "anchor.ms": agent.ms ?? 0 }));
+}

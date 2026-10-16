@@ -9,7 +9,7 @@ import { askChart } from "./ask.js";
 import { draftNote, memorySummary, type Disposition } from "./note.js";
 import { rememberCall, resetDemoMemory } from "./memory.js";
 import { mockEhrRouter } from "./mockEhr.js";
-import { anchorReady, pullChart, runEhrPost, runEhrPull, type EhrAgent } from "./anchor.js";
+import { anchorReady, pullChart, runEhrPost, type EhrAgent } from "./anchor.js";
 import { recallForResident, seedMemory } from "./memory.js";
 import { addSegment, broadcast, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
@@ -131,10 +131,7 @@ app.post("/api/calls", (req, res) => {
   if (!resident) return res.status(400).json({ error: "unknown residentId" });
   const state = createCall(residentId);
   // At call start, Anchor's agent signs into the facility EHR portal and reads the chart (watched via live view).
-  if (req.body?.ehrAgent && anchorReady().ok) {
-    state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
-    void runEhrPull(resident, state.ehrAgent, () => broadcast(state));
-  }
+  state.wantsEhr = !!req.body?.ehrAgent && anchorReady().ok;
   res.json(state);
 });
 
