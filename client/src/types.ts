@@ -74,4 +74,5 @@ export type CallState = {
   disposition: "transfer" | "treat_in_place" | null;
   note: string | null;
   signedBy: string | null;
+  ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
 };

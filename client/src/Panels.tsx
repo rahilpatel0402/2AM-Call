@@ -415,59 +415,111 @@ export function AskCard({ residentId, firstName }: { residentId: string; firstNa
   );
 }
 
-// ---------- physician decision + draft note + sign ----------
+// ---------- physician decision (top bar) ----------
+
+export function DecisionBar({ call, busy, warn, onDecide }: { call: CallState; busy: boolean; warn?: boolean; onDecide: (d: "transfer" | "treat_in_place") => void }) {
+  const signed = !!call.signedBy;
+  return (
+    <div className={`decision-bar ${warn ? "decision-warn" : ""}`}>
+      <span className="decision-label">Physician decision</span>
+      {(["transfer", "treat_in_place"] as const).map((d) => (
+        <button key={d} className={`btn btn-decision ${call.disposition === d ? "chosen" : ""}`} disabled={busy || signed} onClick={() => onDecide(d)}>
+          {d === "transfer" ? "Transfer to hospital" : "Treat in place"}
+        </button>
+      ))}
+      <span className="decision-hint">
+        {warn ? "The nurse has not been given a decision yet. Choose one, or click End without decision (for example, a dropped call)." : busy ? "Drafting the note from the call record." : call.disposition ? "Tell the nurse your plan. The draft note is open below." : "Decide during or after the call. The app never makes or suggests this decision."}
+      </span>
+    </div>
+  );
+}
+
+// ---------- on-call note + sign + post to facility EHR ----------
 
 export function NoteCard({ call, onSigned }: { call: CallState; onSigned: (msg: string) => void }) {
-  const [busy, setBusy] = useState<"draft" | "sign" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [text, setText] = useState(call.note ?? "");
   const [physician, setPhysician] = useState("Dr. Rahil (on call)");
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { if (call.note && !text) setText(call.note); }, [call.note]);
-
-  async function decide(disposition: "transfer" | "treat_in_place") {
-    setBusy("draft"); setErr(null);
-    try {
-      const r = await fetch(`/api/calls/${call.callId}/note`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ disposition }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      setText(d.note);
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
-  }
+  // A new draft (new decision) replaces the editor text.
+  useEffect(() => { if (call.note && !call.signedBy) setText(call.note); }, [call.note]);
 
   async function sign() {
-    setBusy("sign"); setErr(null);
+    setBusy(true); setErr(null);
     try {
       const r = await fetch(`/api/calls/${call.callId}/sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: text, physician }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
-      onSigned(`Signed and remembered in SurrealDB Agent Memory. The next physician called about this resident will see it.`);
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+      onSigned("Signed and remembered in SurrealDB Agent Memory. The next physician called about this resident will see it.");
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
 
   const signed = !!call.signedBy;
+  const post = call.ehrPost;
   return (
-    <Card title="Physician decision and on-call note" icon="flag" className="note-card">
-      <div className="decision">
-        <span className="decision-label">Physician decision</span>
-        {(["transfer", "treat_in_place"] as const).map((d) => (
-          <button key={d} className={`btn btn-decision ${call.disposition === d ? "chosen" : ""}`} disabled={!!busy || signed} onClick={() => void decide(d)}>
-            {d === "transfer" ? "Transfer to hospital" : "Treat in place"}
-          </button>
-        ))}
-        <span className="disclaimer">The app never makes or suggests this decision.</span>
-      </div>
-      {busy === "draft" && <p className="empty">Drafting the note from the call record only.</p>}
+    <Card title={call.disposition === "transfer" ? "On-call note · transfer to hospital" : "On-call note · treat in place"} icon="flag" className="note-card"
+      meta={post && <span className={`ehr-status ehr-${post.status}`}>{post.status === "posting" ? "Posting to facility EHR via Anchor" : post.status === "posted" ? "✓ Posted to facility EHR" : "EHR post failed"}</span>}>
       {err && <p className="pipeline-error">{err}</p>}
-      {(text || call.note) && (
+      <textarea className="note-text" value={text} onChange={(e) => setText(e.target.value)} readOnly={signed} rows={14} />
+      <p className="source">Type the orders you give the nurse under "Plan (orders given to the nurse)". Nothing is filed until you sign.</p>
+      <div className="sign-row">
+        <input className="ask-input" value={physician} onChange={(e) => setPhysician(e.target.value)} disabled={signed} aria-label="Signing physician" />
+        <button className="btn btn-navy" onClick={() => void sign()} disabled={busy || signed || !text.trim()}>
+          {signed ? `Signed by ${call.signedBy}` : busy ? "Signing" : "Sign and post to facility EHR"}
+        </button>
+      </div>
+      {post && <p className={`source ehr-detail ehr-${post.status}`}>{post.detail}</p>}
+    </Card>
+  );
+}
+
+// ---------- facility EHR portal pull (Anchor Browser) ----------
+
+export type PulledChart = {
+  medications: { name: string; dose: string }[]; code_status: string; allergies: string; pulledAt: string; ms: number;
+  matchesChart: { medications: boolean; codeStatus: boolean; allergies: boolean };
+};
+
+export function EhrStrip({ residentId, enabled }: { residentId: string; enabled: boolean }) {
+  const [state, setState] = useState<{ status: "idle" | "pulling" | "done" | "error"; data?: PulledChart; error?: string }>({ status: "idle" });
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setState({ status: "idle" }); setOpen(false); }, [residentId]);
+  if (!enabled) return null;
+
+  async function pull() {
+    setState({ status: "pulling" });
+    try {
+      const r = await fetch(`/api/residents/${residentId}/ehr-pull`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setState({ status: "done", data: d });
+    } catch (e) { setState({ status: "error", error: (e as Error).message }); }
+  }
+
+  const d = state.data;
+  const allMatch = d && d.matchesChart.medications && d.matchesChart.codeStatus && d.matchesChart.allergies;
+  return (
+    <div className="ehr-strip">
+      <span className="ehr-title">Facility EHR portal</span>
+      {state.status === "idle" && <button className="btn btn-outline btn-small" onClick={() => void pull()}>Pull chart via Anchor</button>}
+      {state.status === "pulling" && <span className="ehr-running"><span className="pulse pulse-blue" /> Anchor cloud browser is signing in and reading the chart (about 30 s)</span>}
+      {state.status === "error" && <span className="pipeline-error">Could not pull: {state.error} <button className="link-btn" onClick={() => void pull()}>Retry</button></span>}
+      {d && (
         <>
-          <textarea className="note-text" value={text} onChange={(e) => setText(e.target.value)} readOnly={signed} rows={16} />
-          <div className="sign-row">
-            <input className="ask-input" value={physician} onChange={(e) => setPhysician(e.target.value)} disabled={signed} aria-label="Signing physician" />
-            <button className="btn btn-navy" onClick={() => void sign()} disabled={!!busy || signed || !text.trim()}>{signed ? `Signed by ${call.signedBy}` : busy === "sign" ? "Signing" : "Sign note"}</button>
-          </div>
-          <p className="source">Draft generated by AI from the call record. Edit freely; nothing is filed until you sign.</p>
+          <span className={allMatch ? "ehr-ok" : "ehr-warn"}>
+            {allMatch ? "✓" : "!"} Pulled {d.medications.length} medications, code status, and allergies in {Math.round(d.ms / 1000)} s · {allMatch ? "matches chart" : "differs from chart, review"}
+          </span>
+          <button className="link-btn" onClick={() => setOpen(!open)}>{open ? "Hide" : "Show"}</button>
+          {open && (
+            <div className="ehr-detail-box">
+              <div><strong>Code status / MOLST:</strong> {d.code_status}</div>
+              <div><strong>Allergies:</strong> {d.allergies}</div>
+              <div><strong>Medications:</strong> {d.medications.map((m) => `${m.name} ${m.dose}`).join("; ")}</div>
+              <div className="source">Source: facility web EHR portal, read by Anchor Browser (no API needed).</div>
+            </div>
+          )}
         </>
       )}
-    </Card>
+    </div>
   );
 }

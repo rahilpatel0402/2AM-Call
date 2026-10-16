@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { AskCard, Card, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
+import { AskCard, Card, DecisionBar, EhrStrip, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -35,6 +35,8 @@ export default function App() {
   const [call, setCall] = useState<CallState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [anchorOk, setAnchorOk] = useState(false);
   const callIdRef = useRef<string | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [voicing, setVoicing] = useState(false);
@@ -57,7 +59,21 @@ export default function App() {
 
   useEffect(() => {
     fetch("/api/residents").then((r) => r.json()).then(setResidents).catch((e) => setError(e.message));
+    fetch("/api/anchor/status").then((r) => r.json()).then((s) => setAnchorOk(!!s.ok)).catch(() => {});
   }, []);
+
+  // Physician decision: drafts the note from the call record (during or after the call).
+  async function decide(disposition: "transfer" | "treat_in_place") {
+    if (!call) return;
+    setDrafting(true);
+    try {
+      await postJson(`/api/calls/${call.callId}/note`, { disposition });
+    } catch (e) {
+      setError(`Could not draft the note: ${(e as Error).message}`);
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   useEffect(() => {
     setDetail(null);
@@ -155,7 +171,16 @@ export default function App() {
     }
   }
 
+  // Ending a call without telling the nurse the plan needs a deliberate second click (e.g. a dropped call).
+  const [needDecision, setNeedDecision] = useState(false);
+  useEffect(() => setNeedDecision(false), [call?.callId, call?.disposition]);
+
   async function endCurrentCall() {
+    if (call && !call.disposition && !needDecision) {
+      setNeedDecision(true);
+      return;
+    }
+    setNeedDecision(false);
     stopVoice();
     if (scribe.isConnected) scribe.disconnect();
     if (call) await postJson(`/api/calls/${call.callId}/end`).catch(() => {});
@@ -236,6 +261,8 @@ export default function App() {
         </div>
       </div>
 
+      <EhrStrip residentId={residentId} enabled={anchorOk} />
+      {(call?.facts || needDecision) && call && <DecisionBar call={call} busy={drafting} warn={needDecision} onDecide={(d) => void decide(d)} />}
       {error && <div className="error-bar">{error}</div>}
       {notice && <div className="notice-bar">{notice} <button className="link-btn" onClick={() => { setNotice(null); void startReplay(); }}>Start a new call for {r?.name.split(" ")[0]}</button></div>}
       {call?.pipelineError && <div className="error-bar">Analysis error: {call.pipelineError}</div>}
@@ -250,6 +277,7 @@ export default function App() {
         </Card>
 
         <div className="panels">
+          {call?.note && <NoteCard key={call.callId} call={call} onSigned={setNotice} />}
           <RedFlagsCard flags={call?.redFlags ?? []} goalsNote={call?.goalsNote ?? null} started={!!call?.facts} />
 
           <div className="row row-primary">
@@ -262,8 +290,6 @@ export default function App() {
             <FacilityCard items={call?.feasibility ?? []} started={!!call?.facts} />
           </div>
 
-          {ended && call && <NoteCard key={call.callId} call={call} onSigned={setNotice} />}
-
           <div className="row">
             <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} note={call?.priorCallsNote} />
             <AskCard residentId={residentId} firstName={r?.name.split(" ")[0] ?? "this resident"} />
@@ -272,7 +298,9 @@ export default function App() {
       </main>
 
       <footer className="actionbar">
-        <button className="btn btn-outline" onClick={endCurrentCall} disabled={!callActive}>End call</button>
+        <button className={`btn ${needDecision ? "btn-danger" : "btn-outline"}`} onClick={endCurrentCall} disabled={!callActive}>
+          {needDecision ? "End without decision" : "End call"}
+        </button>
         <span className="disclaimer">Decision support only. The physician makes every disposition decision.</span>
       </footer>
     </div>
