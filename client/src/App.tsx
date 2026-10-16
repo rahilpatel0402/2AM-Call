@@ -83,7 +83,6 @@ export default function App() {
           stopVoice(); // the physician has decided: skip the rest of the scripted call
           const script = call.residentId.replace("res_", "");
           for (const line of lines) {
-            await postJson(`/api/calls/${callId}/segments`, line).catch(() => {});
             if (audioOn) {
               const audio = new Audio(`/api/tts-say?script=${script}&speaker=${line.speaker}&text=${encodeURIComponent(line.text)}`);
               audioEl.current = audio;
@@ -91,6 +90,7 @@ export default function App() {
             } else {
               await new Promise((res) => setTimeout(res, 2500));
             }
+            await postJson(`/api/calls/${callId}/segments`, line).catch(() => {});
             await new Promise((res) => setTimeout(res, 300));
           }
           await postJson(`/api/calls/${callId}/end`).catch(() => {});
@@ -148,7 +148,6 @@ export default function App() {
       const audio = next;
       if (i + 1 < lines.length) next = clip(i + 1);
       audioEl.current = audio;
-      postJson(`/api/calls/${callId}/segments`, { text: lines[i].text, speaker: lines[i].speaker }).catch(() => {});
       try {
         await audio.play();
         await new Promise<void>((resolve) => {
@@ -158,6 +157,9 @@ export default function App() {
       } catch {
         await new Promise((r) => setTimeout(r, lines[i].delayMs)); // audio blocked or failed: keep the text pacing
       }
+      if (voiceRun.current !== run) return;
+      // Committed when the speaker finishes, like live transcription: nothing is known before it is said.
+      postJson(`/api/calls/${callId}/segments`, { text: lines[i].text, speaker: lines[i].speaker }).catch(() => {});
       await new Promise((r) => setTimeout(r, 350)); // natural pause between speakers
     }
     if (voiceRun.current !== run) return;

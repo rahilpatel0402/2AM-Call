@@ -275,7 +275,7 @@ export async function prepareEhrSession(agent: EhrAgent, changed: () => void): P
 
 const LIVE_VIEW_WARMUP_MS = 3000;
 
-export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: () => void, prepared?: Promise<PreparedSession>): Promise<Resident> {
+export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: () => void, prepared?: Promise<PreparedSession>, heard?: string): Promise<Resident> {
   const base = ehrPublicUrl()!;
   const t0 = Date.now();
   let sessionId: string | null = null;
@@ -300,7 +300,7 @@ export async function readChartFromEhr(r: Resident, agent: EhrAgent, changed: ()
       await page.fill("#password", EHR_DEMO_PASSWORD);
       await page.click("button[type=submit]");
       await page.waitForURL(/\/ehr\/residents/);
-      await step(`Opening ${r.name}`);
+      await step(heard ? `Heard "${heard}" on the call. Finding the resident in the census` : `Opening ${r.name}`, 900);
       await page.click(`a:has-text("${r.name}")`);
       await page.waitForSelector("#medications");
 

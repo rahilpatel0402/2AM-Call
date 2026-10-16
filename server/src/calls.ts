@@ -1,7 +1,7 @@
 // In-memory call state. Every change is pushed to SSE subscribers as the full CallState.
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
-import { getResident, getScript, type Resident, type ScriptLine } from "./db.js";
+import { getResident, getScript, listResidents, type Resident, type ScriptLine } from "./db.js";
 import { runPipeline } from "./pipeline.js";
 import { recallForResident } from "./memory.js";
 import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
@@ -42,6 +42,7 @@ export type CallState = {
   // Chart for this call: read from the facility EHR portal by Anchor, or the local copy as fallback.
   chartSource: "ehr" | "local" | "pending";
   wantsEhr: boolean;
+  ehrStarted: boolean;
 };
 
 const charts = new Map<string, { chart: Resident | null; pending: Promise<Resident | null> | null }>();
@@ -115,11 +116,23 @@ export function prepareEhr(state: CallState) {
   preparedSessions.set(state.callId, p);
 }
 
-function startEhrRead(state: CallState) {
-  const resident = getResident(state.residentId)!;
+// Identify the resident from what was SAID on the call: full name, or a room number on the census.
+function identifyResident(text: string): { resident: Resident; heard: string } | null {
+  const t = text.toLowerCase();
+  for (const r of listResidents()) {
+    const byName = t.includes(r.name.toLowerCase());
+    const byRoom = new RegExp(`\\b${r.room.toLowerCase()}\\b`).test(t);
+    if (byName || byRoom) return { resident: r, heard: [byName ? r.name : null, byRoom ? `room ${r.room}` : null].filter(Boolean).join(", ") };
+  }
+  return null;
+}
+
+function startEhrRead(state: CallState, heard?: { resident: Resident; heard: string }) {
+  const resident = heard?.resident ?? getResident(state.residentId)!;
+  state.ehrStarted = true;
   state.ehrAgent ??= { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
   state.chartSource = "pending";
-  const pending = readChartFromEhr(resident, state.ehrAgent, () => broadcast(state), preparedSessions.get(state.callId))
+  const pending = readChartFromEhr(resident, state.ehrAgent, () => broadcast(state), preparedSessions.get(state.callId), heard?.heard)
     .then((chart) => {
       charts.set(state.callId, { chart, pending: null });
       state.chartSource = "ehr";
@@ -169,6 +182,7 @@ export function createCall(residentId: string): CallState {
     ehrAgent: null,
     chartSource: "local",
     wantsEhr: false,
+    ehrStarted: false,
   };
   calls.set(state.callId, state);
   // Recall this resident's prior night calls from Agent Memory at call start.
@@ -219,8 +233,11 @@ export function subscribe(state: CallState, res: Response) {
 export function addSegment(state: CallState, text: string, speaker: Speaker = "unknown"): Segment {
   const seg: Segment = { id: randomUUID().slice(0, 8), ts: Date.now(), speaker, text: text.trim() };
   state.segments.push(seg);
-  // The nurse's first line (facility, resident, room) starts the EHR read.
-  if (state.wantsEhr && state.segments.length === 1 && anchorReady().ok) startEhrRead(state);
+  // The EHR read starts once the resident is identified from the call (name or room said by the nurse).
+  if (state.wantsEhr && !state.ehrStarted && anchorReady().ok) {
+    const who = identifyResident(state.segments.map((s) => s.text).join(" "));
+    if (who) startEhrRead(state, who);
+  }
   broadcast(state);
   schedulePipeline(state);
   return seg;
