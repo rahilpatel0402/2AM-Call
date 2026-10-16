@@ -32,8 +32,8 @@ export const HYPOTHERMIA_C = 36.0;
 
 export const RED_FLAG_BANNER = "Consider urgent evaluation / transfer. Physician decision.";
 
-// title is plain language for any audience; clinical is the medical term shown beneath it.
-export type RedFlag = { id: string; title: string; clinical: string; why: string; evidence: string[] };
+// title is the clinical term; plain is a short explanation in everyday words, shown small beneath it.
+export type RedFlag = { id: string; title: string; plain: string; why: string; evidence: string[] };
 
 const ORIENTED_X3 = /oriented\s*(x|times)\s*3|a\s*&?\s*o\s*x\s*3|a&ox3/i;
 
@@ -87,8 +87,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
   if (sbp.value < 90 || (b.sbp !== undefined && b.sbp - sbp.value >= 40)) {
     flags.push({
       id: "hypotension",
-      title: "Low blood pressure",
-      clinical: "Hypotension",
+      title: "Hypotension",
+      plain: "Low blood pressure",
       why: sbp.value < 90 ? `Systolic BP below 90 (usual ${b.sbp}).` : `Systolic BP ${b.sbp! - sbp.value} below this resident's baseline.`,
       evidence: [`SBP ${sbp.value} (${src(sbp)})`, `Baseline SBP ${b.sbp} (${b.source})`, ...rateMeds],
     });
@@ -99,8 +99,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
   if (spo2.value < 90 || (v.o2.onOxygen && v.o2.from === "call" && chartOnRoomAir)) {
     flags.push({
       id: "hypoxia",
-      title: "Low oxygen level",
-      clinical: "Hypoxia",
+      title: "Hypoxia",
+      plain: "Low oxygen level",
       why: spo2.value < 90 ? `SpO2 below 90 on ${v.o2.value}.` : "New oxygen requirement; charted on room air for 14 days.",
       evidence: [`SpO2 ${spo2.value}% (${src(spo2)})`, `Oxygen: ${v.o2.value} (${src(v.o2)})`, `Baseline SpO2 ${b.spo2}%`],
     });
@@ -110,8 +110,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
   if (hr.value > 130 || (hr.value > 110 && sbp.value < 100)) {
     flags.push({
       id: "tachycardia",
-      title: "Fast heart rate",
-      clinical: "Tachycardia",
+      title: "Tachycardia",
+      plain: "Fast heart rate",
       why: hr.value > 130 ? "Heart rate above 130." : "Heart rate above 110 with systolic BP below 100.",
       evidence: [`HR ${hr.value} (${src(hr)})`, `SBP ${sbp.value} (${src(sbp)})`, `Baseline HR ${b.hr}`, ...rateMeds],
     });
@@ -119,12 +119,12 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
 
   // bradycardia: HR < 50 (NEWS2 scores <= 50; older adults on rate-slowing drugs)
   if (hr.value < 50) {
-    flags.push({ id: "bradycardia", title: "Slow heart rate", clinical: "Bradycardia", why: "Heart rate below 50.", evidence: [`HR ${hr.value} (${src(hr)})`, `Baseline HR ${b.hr}`, ...rateMeds] });
+    flags.push({ id: "bradycardia", title: "Bradycardia", plain: "Slow heart rate", why: "Heart rate below 50.", evidence: [`HR ${hr.value} (${src(hr)})`, `Baseline HR ${b.hr}`, ...rateMeds] });
   }
 
   // tachypnea: RR >= 25 (NEWS2 scores 3)
   if (rr.value >= 25) {
-    flags.push({ id: "tachypnea", title: "Fast breathing", clinical: "Tachypnea", why: "Respiratory rate 25 or higher.", evidence: [`RR ${rr.value} (${src(rr)})`, `Baseline RR ${b.rr}`] });
+    flags.push({ id: "tachypnea", title: "Tachypnea", plain: "Fast breathing", why: "Respiratory rate 25 or higher.", evidence: [`RR ${rr.value} (${src(rr)})`, `Baseline RR ${b.rr}`] });
   }
 
   // sepsis_pattern: LTC fever (or hypothermia) AND organ dysfunction sign (qSOFA criteria: SBP <= 100, RR >= 22, acute mental status change)
@@ -144,7 +144,7 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
     flags.push({
       id: "sepsis_pattern",
       title: "Possible sepsis",
-      clinical: "Sepsis pattern: the body's dangerous response to infection",
+      plain: "The body's dangerous, whole-body reaction to an infection",
       why: `${hypothermia ? "Low temperature" : temp.value < 38.0 ? "Fever by nursing home criteria (below the hospital 38.0 cutoff)" : "Fever"} with low BP, fast breathing, or acute confusion.`,
       evidence: [...ev, ...rateMeds],
     });
@@ -157,7 +157,7 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
     if (lowSbp) ev.push(`SBP ${sbp.value} (≤100)`);
     if (fastRr) ev.push(`RR ${rr.value} (≥22)`);
     if (conf) ev.push(`Acute mental status change: ${q(conf.quote)}`);
-    flags.push({ id: "qsofa", title: `Organ stress signs: ${qsofa} of 3`, clinical: `qSOFA ${qsofa}`, why: "Low blood pressure, fast breathing, or sudden confusion. Two or more suggest organs are under strain, with or without fever.", evidence: ev });
+    flags.push({ id: "qsofa", title: `qSOFA ${qsofa}`, plain: `Organ stress signs: ${qsofa} of 3`, why: "Low blood pressure, fast breathing, or sudden confusion. Two or more suggest organs are under strain, with or without fever.", evidence: ev });
   }
 
   // fall_anticoag: fall AND (head strike OR unwitnessed) AND anticoagulant / non-aspirin antiplatelet (NICE NG232)
@@ -168,8 +168,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
     const anticoag = bleedMeds.some((m) => m.class === "anticoagulant");
     flags.push({
       id: "fall_anticoag",
-      title: "Fall on a blood thinner",
-      clinical: anticoag ? "Fall on anticoagulant" : "Fall on antiplatelet",
+      title: anticoag ? "Fall on anticoagulant" : "Fall on antiplatelet",
+      plain: "Fall while on a blood thinner: risk of bleeding in the brain",
       why: `${fall.witnessed === false ? "Unwitnessed fall" : "Fall"}${headStrike ? " with head strike" : ""} in a resident on ${anticoag ? "an anticoagulant" : "antiplatelet therapy"}: risk of intracranial bleeding. NICE NG232: consider CT head within 8 hours.`,
       evidence: [`Fall: ${q(fall.quote)}`, ...bleedMeds.map((m) => `${m.name} ${m.dose} (medication list)`)],
     });
@@ -180,8 +180,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
     const dementia = !baselineOrientedX3(r);
     flags.push({
       id: "acute_mental_status_change",
-      title: "Sudden confusion",
-      clinical: "Acute mental status change, possible delirium",
+      title: "Acute mental status change",
+      plain: "Sudden confusion, possible delirium",
       why: dementia
         ? "Worse than this resident's usual cognition: possible delirium superimposed on dementia, often the first sign of infection."
         : "New confusion in a resident whose baseline is alert and oriented x3: possible delirium.",
@@ -192,13 +192,13 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
   // stroke_signs: focal weakness, facial droop, or new speech change
   const stroke = symptom(facts, ["focal_weakness", "facial_droop", "speech_change", "slurred_speech", "aphasia"]);
   if (stroke) {
-    flags.push({ id: "stroke_signs", title: "Possible stroke signs", clinical: "Focal neurologic deficit", why: "Focal weakness, facial droop, or new speech change reported.", evidence: [q(stroke.quote)] });
+    flags.push({ id: "stroke_signs", title: "Possible stroke signs", plain: "New weakness, face droop, or speech change", why: "Focal weakness, facial droop, or new speech change reported.", evidence: [q(stroke.quote)] });
   }
 
   // chest_pain: chest pain reported
   const cp = symptom(facts, ["chest_pain"]);
   if (cp) {
-    flags.push({ id: "chest_pain", title: "Chest pain", clinical: "Possible acute coronary syndrome", why: "Chest pain reported.", evidence: [q(cp.quote)] });
+    flags.push({ id: "chest_pain", title: "Chest pain", plain: "Possible heart problem", why: "Chest pain reported.", evidence: [q(cp.quote)] });
   }
 
   // news2_high: NEWS2 >= 7, or any single parameter scoring 3 (RCP 2017)
@@ -206,8 +206,8 @@ export function evaluateRules(r: Resident, facts: ExtractedFacts | null, scores:
     const threes = news2.parts.filter((p) => p.points === 3).map((p) => `${p.param} ${p.value} scores 3`);
     flags.push({
       id: "news2_high",
-      title: `Early warning score ${news2.total}${news2.total >= 7 ? " (high risk)" : ""}`,
-      clinical: "NEWS2 (UK national early warning score, 0 to 20)",
+      title: `NEWS2 ${news2.total}${news2.total >= 7 ? " (high)" : ""}`,
+      plain: "Early warning score, 0 to 20. 7 or more means high risk of getting worse",
       why: news2.total >= 7 ? "Score of 7 or more: high risk of deterioration." : "One vital sign alone is in the most abnormal range.",
       evidence: [...threes, news2.complete ? "All vitals from tonight's call" : "Some parameters use last charted values"],
     });

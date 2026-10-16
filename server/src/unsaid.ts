@@ -32,7 +32,7 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
       const idx = r.medications.findIndex((m) => m.class === "anticoagulant" || m.class === "antiplatelet");
       if (idx < 0) return null;
       const meds = r.medications.filter((m) => m.class === "anticoagulant" || m.class === "antiplatelet");
-      const label = meds.some((m) => m.class === "anticoagulant") ? "Blood thinner (anticoagulant)" : "Blood thinner (antiplatelet)";
+      const label = meds.some((m) => m.class === "anticoagulant") ? "Anticoagulant · blood thinner" : "Antiplatelet · blood thinner";
       return {
         item, label,
         value: meds.map((m) => `${m.name} ${m.dose}`).join(", "),
@@ -41,13 +41,13 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
     }
     case "code_status":
       return {
-        item, label: "Resuscitation and hospital wishes",
+        item, label: "Code status / MOLST · resuscitation and hospital wishes",
         value: `${r.code_status.value}. MOLST: ${r.code_status.molst}`,
         source: { doc: r.code_status.source, field: "code_status", label: r.code_status.source },
       };
     case "baseline_mental_status":
       return {
-        item, label: "Usual mental status",
+        item, label: "Baseline mental status · usual thinking and memory",
         value: r.baseline.mental_status,
         source: { doc: r.baseline.source, field: "baseline.mental_status", label: r.baseline.source },
       };
@@ -130,7 +130,7 @@ function glucoseCheck(r: Resident, facts: ExtractedFacts, transcript: string): U
   const med = r.medications[idx];
   return {
     item: "glucose_check",
-    label: "Fingerstick glucose",
+    label: "Fingerstick glucose · blood sugar check",
     value: `On ${med.name} ${med.dose} with ${sx.name.replace(/_/g, " ")} tonight. No glucose reading stated on the call.`,
     source: { doc: r.id, field: `medications[${idx}]`, label: "medication list + call transcript" },
   };

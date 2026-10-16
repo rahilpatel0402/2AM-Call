@@ -36,7 +36,7 @@ export type CoveredItem = { item: string; label: string; quote: string };
 
 export type PriorCallMemory = { ts: string; text: string; source: string; backend: string };
 
-export type RedFlag = { id: string; title: string; clinical: string; why: string; evidence: string[] };
+export type RedFlag = { id: string; title: string; plain: string; why: string; evidence: string[] };
 
 export type VitalKey = "sbp" | "dbp" | "hr" | "rr" | "temp_c" | "spo2";
 export type VitalReading = { value: number; from: "call" | "chart"; evidence: string };
