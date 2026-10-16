@@ -52,12 +52,12 @@ async function checkElevenLabs(): Promise<string> {
 
 async function checkDaytona(): Promise<string> {
   requireEnv("DAYTONA_API_KEY");
-  const daytona = new Daytona({ apiKey: env("DAYTONA_API_KEY") });
+  const daytona = new Daytona({ apiKey: env("DAYTONA_API_KEY"), ...(env("DAYTONA_API_URL") ? { apiUrl: env("DAYTONA_API_URL") } : {}) });
   const sandbox = await daytona.create({ language: "typescript" });
   try {
     const result = await sandbox.process.codeRun("console.log(2+2)");
-    const out = (result.result ?? "").trim();
-    if (result.exitCode !== 0 || out !== "4") throw new Error(`exit ${result.exitCode}, output "${out}"`);
+    const out = (result.result ?? "").trim().split(/\r?\n/)[0].trim();
+    if (result.exitCode !== 0 || out !== "4") throw new Error(`exit ${result.exitCode}, output ${JSON.stringify(result.result)}`);
     return `sandbox ran console.log(2+2) -> ${out}`;
   } finally {
     await daytona.delete(sandbox).catch(() => {});
