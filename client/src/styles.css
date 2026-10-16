@@ -420,3 +420,6 @@ body { margin: 0; background: var(--bg); }
 .chart-local { background: #f1f5f9; color: var(--muted); }
 .pip-view.pip-view-hidden { height: 0; visibility: hidden; }
 .pip-offstage { opacity: 0; pointer-events: none; }
+/* Minimized Anchor bar docks at the right end of the bottom action bar (End call row). */
+.pip.pip-min { bottom: 10px; right: 28px; width: 380px; box-shadow: none; animation: none; }
+.pip.pip-min .pip-head { padding: 9px 12px; }
