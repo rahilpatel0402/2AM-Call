@@ -3,7 +3,8 @@ import express from "express";
 import cors from "cors";
 import { env } from "./env.js";
 import { getFacilityForResident, getResident, getScript, listResidents } from "./db.js";
-import { lineAudio, prewarmAll } from "./tts.js";
+import { lineAudio, prewarmAll, sayAudio } from "./tts.js";
+import { closingLines } from "./closing.js";
 import { askChart } from "./ask.js";
 import { draftNote, memorySummary, type Disposition } from "./note.js";
 import { rememberCall, resetDemoMemory } from "./memory.js";
@@ -99,6 +100,18 @@ app.get("/api/tts/:script/:index", async (req, res) => {
   try {
     const audio = await lineAudio(req.params.script, Number(req.params.index));
     res.set({ "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=86400" }).send(audio);
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+app.get("/api/tts-say", async (req, res) => {
+  const script = String(req.query.script ?? "");
+  const speaker = req.query.speaker === "nurse" ? "nurse" : "doctor";
+  const text = String(req.query.text ?? "").slice(0, 400);
+  if (!text) return res.status(400).json({ error: "text is required" });
+  try {
+    res.set({ "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=86400" }).send(await sayAudio(script, speaker, text));
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
   }
@@ -200,6 +213,14 @@ app.post("/api/calls/:id/sign", async (req, res) => {
   }
   broadcast(state);
   res.json({ ok: true, remembered: m });
+});
+
+// The physician tells the nurse the decision before hanging up.
+app.get("/api/calls/:id/closing", (req, res) => {
+  const state = withCall(req.params.id, res);
+  if (!state) return;
+  const d = req.query.disposition === "transfer" ? "transfer" : "treat_in_place";
+  res.json(closingLines(getResident(state.residentId)!, state.residentId.replace("res_", ""), d));
 });
 
 app.post("/api/calls/:id/end", (req, res) => {

@@ -9,6 +9,7 @@ import { env } from "./env.js";
 import type { Resident } from "./db.js";
 import { EHR_DEMO_PASSWORD, EHR_DEMO_USER, notesFor } from "./mockEhr.js";
 import { span } from "./tracing.js";
+import { chromium } from "playwright-core";
 
 const URL_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.ehr-url");
 
@@ -139,9 +140,9 @@ async function anchorApi(method: string, pathname: string, body?: unknown): Prom
 }
 
 // Headful cloud browser opened on the portal sign-in page; live_view_url is embeddable in an iframe.
-async function openSession(startUrl: string): Promise<{ id: string; liveViewUrl: string }> {
+async function openSession(startUrl: string): Promise<{ id: string; liveViewUrl: string; cdpUrl: string }> {
   const json = await anchorApi("POST", "/v1/sessions", { session: { initial_url: startUrl }, browser: { headless: { active: false } } });
-  return { id: json.data.id, liveViewUrl: json.data.live_view_url };
+  return { id: json.data.id, liveViewUrl: json.data.live_view_url, cdpUrl: json.data.cdp_url };
 }
 
 async function closeSession(id: string) {
@@ -205,31 +206,53 @@ export async function runEhrPull(r: Resident, agent: EhrAgent, changed: () => vo
   }, () => ({ "anchor.status": agent.status, "anchor.found": agent.found.join(", "), "anchor.matches_chart": String(agent.matchesChart), "anchor.ms": agent.ms ?? 0 }));
 }
 
-// Called on Sign: the agent posts the signed note into the portal, watched in the same live view window.
+// Called on Sign: posts the signed note into the portal by driving the Anchor cloud browser directly over CDP
+// (Playwright), which is fast and deterministic; the live view shows each step and where the note lands.
 export async function runEhrPost(r: Resident, physician: string, note: string, agent: EhrAgent, changed: () => void): Promise<void> {
   const base = ehrPublicUrl()!;
   const before = notesFor(r.id).length;
   const t0 = Date.now();
   let sessionId: string | null = null;
-  await span("anchor.ehr_agent_post", "TOOL", { "resident.id": r.id, "input.value": note }, async () => {
+  const step = async (detail: string, pauseMs = 700) => {
+    agent.detail = detail;
+    changed();
+    await new Promise((res) => setTimeout(res, pauseMs)); // keeps each step visible in the live view
+  };
+  await span("anchor.ehr_post_note", "TOOL", { "resident.id": r.id, "input.value": note }, async () => {
     try {
       const s = await openSession(`${base}/ehr/`);
       sessionId = s.id;
-      Object.assign(agent, { task: "post", status: "posting", liveViewUrl: s.liveViewUrl, found: [], matchesChart: null, detail: "Signing in to the facility EHR portal to post the signed note" });
-      changed();
-      await performWebTask({
-        prompt: `${SIGN_IN} Open the census, open the resident named "${r.name}". In the "Add progress note" form, type "${physician}" into the Author field, then type the following text into the Note field exactly, preserving line breaks, and click "Save note". Note text:\n\n${note}`,
-        max_steps: 30,
-      }, s.id);
-      const verified = notesFor(r.id).length > before; // checked against the portal's own records
+      Object.assign(agent, { task: "post", status: "posting", liveViewUrl: s.liveViewUrl, found: [], matchesChart: null });
+      await step("Cloud browser open on the facility EHR portal", 1500);
+      const browser = await chromium.connectOverCDP(s.cdpUrl);
+      const context = browser.contexts()[0] ?? (await browser.newContext());
+      const page = context.pages()[0] ?? (await context.newPage());
+      if (!page.url().includes("/ehr")) await page.goto(`${base}/ehr/`);
+      await step("Signing in");
+      await page.fill("#username", EHR_DEMO_USER);
+      await page.fill("#password", EHR_DEMO_PASSWORD);
+      await page.click("button[type=submit]");
+      await page.waitForURL(/\/ehr\/residents/);
+      await step(`Opening ${r.name}`);
+      await page.click(`a:has-text("${r.name}")`);
+      await page.waitForSelector("#note");
+      await page.locator("#note").scrollIntoViewIfNeeded();
+      await step("Pasting the signed note into Add progress note");
+      await page.fill("#author", physician);
+      await page.fill("#note", note);
+      await step("Saving the note", 1200);
+      await page.click('button:has-text("Save note")');
+      await page.waitForSelector(".note.new");
+      await page.locator(".note.new").first().scrollIntoViewIfNeeded();
+      const verified = notesFor(r.id).length > before; // checked against the portal records, not assumed
       Object.assign(agent, verified
-        ? { status: "posted", ms: Date.now() - t0, detail: "Signed note posted to the facility EHR and verified in the portal." }
-        : { status: "failed", ms: Date.now() - t0, detail: "Agent finished but the note is not in the portal." });
+        ? { status: "posted", found: ["Signed in", `Opened ${r.name}`, "Note saved under Progress notes"], ms: Date.now() - t0, detail: "Signed note posted to the facility EHR (Progress notes) and verified in the portal." }
+        : { status: "failed", ms: Date.now() - t0, detail: "The note is not in the portal." });
     } catch (err) {
       Object.assign(agent, { status: "failed", detail: (err as Error).message.slice(0, 160), ms: Date.now() - t0 });
     } finally {
       changed();
-      if (sessionId) setTimeout(() => void closeSession(sessionId!), 8_000);
+      if (sessionId) setTimeout(() => void closeSession(sessionId!), 15_000); // leave the saved note on screen
     }
   }, () => ({ "anchor.status": agent.status, "anchor.ms": agent.ms ?? 0 }));
 }

@@ -417,7 +417,7 @@ export function AskCard({ residentId, firstName }: { residentId: string; firstNa
 
 // ---------- physician decision (top bar) ----------
 
-export function DecisionBar({ call, busy, warn, onDecide }: { call: CallState; busy: boolean; warn?: boolean; onDecide: (d: "transfer" | "treat_in_place") => void }) {
+export function DecisionBar({ call, busy, warn, sayLine, onDecide }: { call: CallState; busy: boolean; warn?: boolean; sayLine?: string | null; onDecide: (d: "transfer" | "treat_in_place") => void }) {
   const signed = !!call.signedBy;
   return (
     <div className={`decision-bar ${warn ? "decision-warn" : ""}`}>
@@ -428,7 +428,11 @@ export function DecisionBar({ call, busy, warn, onDecide }: { call: CallState; b
         </button>
       ))}
       <span className="decision-hint">
-        {warn ? "The nurse has not been given a decision yet. Choose one, or click End without decision (for example, a dropped call)." : busy ? "Drafting the note from the call record." : call.disposition ? "Tell the nurse your plan. The draft note is open below." : "Decide during or after the call. The app never makes or suggests this decision."}
+        {warn ? "The nurse has not been given a decision yet. Choose one, or click End without decision (for example, a dropped call)."
+          : sayLine ? `Say to the nurse: "${sayLine}" Then end the call.`
+          : busy ? (call.status === "live" ? "Telling the nurse the plan, then ending the call. Drafting the note." : "Drafting the note from the call record.")
+          : call.disposition ? "Plan given to the nurse. Review the draft note, add orders, then sign."
+          : "Decide during the call and tell the nurse. The app never makes or suggests this decision."}
       </span>
     </div>
   );

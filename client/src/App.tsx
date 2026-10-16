@@ -36,6 +36,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const [closingHint, setClosingHint] = useState<string | null>(null);
   const [anchorOk, setAnchorOk] = useState(false);
   const [ehrAgentOn, setEhrAgentOn] = useState(true);
   const callIdRef = useRef<string | null>(null);
@@ -64,13 +65,37 @@ export default function App() {
   }, []);
 
   // Physician decision: drafts the note from the call record (during or after the call).
+  // On a live call the physician then tells the nurse the plan and hangs up: in replay the closing lines
+  // are voiced and the call ends; on a live mic the line is shown for the physician to say.
   async function decide(disposition: "transfer" | "treat_in_place") {
     if (!call) return;
     setDrafting(true);
+    setClosingHint(null);
+    const callId = call.callId;
+    const drafting = postJson(`/api/calls/${callId}/note`, { disposition }).catch((e) => setError(`Could not draft the note: ${(e as Error).message}`));
     try {
-      await postJson(`/api/calls/${call.callId}/note`, { disposition });
-    } catch (e) {
-      setError(`Could not draft the note: ${(e as Error).message}`);
+      if (call.status === "live") {
+        const lines: { speaker: "nurse" | "doctor"; text: string }[] = await fetch(`/api/calls/${callId}/closing?disposition=${disposition}`).then((r) => r.json());
+        if (scribe.isConnected) {
+          setClosingHint(lines.find((l) => l.speaker === "doctor")?.text ?? null);
+        } else {
+          stopVoice(); // the physician has decided: skip the rest of the scripted call
+          const script = call.residentId.replace("res_", "");
+          for (const line of lines) {
+            await postJson(`/api/calls/${callId}/segments`, line).catch(() => {});
+            if (audioOn) {
+              const audio = new Audio(`/api/tts-say?script=${script}&speaker=${line.speaker}&text=${encodeURIComponent(line.text)}`);
+              audioEl.current = audio;
+              await audio.play().then(() => new Promise<void>((res) => { audio.onended = () => res(); audio.onerror = () => res(); })).catch(() => new Promise((res) => setTimeout(res, 2500)));
+            } else {
+              await new Promise((res) => setTimeout(res, 2500));
+            }
+            await new Promise((res) => setTimeout(res, 300));
+          }
+          await postJson(`/api/calls/${callId}/end`).catch(() => {});
+        }
+      }
+      await drafting;
     } finally {
       setDrafting(false);
     }
@@ -267,7 +292,7 @@ export default function App() {
         </div>
       </div>
 
-      {(call?.facts || needDecision) && call && <DecisionBar call={call} busy={drafting} warn={needDecision} onDecide={(d) => void decide(d)} />}
+      {(call?.facts || needDecision) && call && <DecisionBar call={call} busy={drafting} warn={needDecision} sayLine={closingHint} onDecide={(d) => void decide(d)} />}
       {error && <div className="error-bar">{error}</div>}
       {notice && <div className="notice-bar">{notice} <button className="link-btn" onClick={() => { setNotice(null); void startReplay(); }}>Start a new call for {r?.name.split(" ")[0]}</button></div>}
       {call?.pipelineError && <div className="error-bar">Analysis error: {call.pipelineError}</div>}

@@ -5,7 +5,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { env } from "./env.js";
-import { getScript } from "./db.js";
+import { getResident, getScript } from "./db.js";
+import { closingLines } from "./closing.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.resolve(here, "../.tts-cache");
@@ -79,5 +80,24 @@ export async function prewarmAll(): Promise<void> {
     }
   };
   await Promise.all([worker(), worker(), worker()]);
+  // Closing lines for both decisions, so the end of a voiced replay never waits on the network.
+  for (const script of ["margaret", "joseph", "dorothy"]) {
+    for (const d of ["treat_in_place", "transfer"] as const) {
+      for (const l of closingLines(getResident(`res_${script}`)!, script, d)) {
+        await sayAudio(script, l.speaker, l.text).then(() => made++).catch(() => failed++);
+      }
+    }
+  }
   console.log(`[tts] voiced replay ready (${made} new clips${failed ? `, ${failed} failed` : ""})`);
+}
+
+// Any line in a script's cast (used for the physician's closing line and the nurse's acknowledgement).
+export async function sayAudio(script: string, speaker: "nurse" | "doctor", text: string): Promise<Buffer> {
+  const voiceId = voiceFor(script, speaker);
+  const file = cachePath(voiceId, text);
+  if (fs.existsSync(file)) return fs.readFileSync(file);
+  const audio = await synthesize(voiceId, text);
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  fs.writeFileSync(file, audio);
+  return audio;
 }
