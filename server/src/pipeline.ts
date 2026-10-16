@@ -25,7 +25,7 @@ export async function runPipeline(state: CallState): Promise<void> {
   state.facts = await extractFacts(state.segments);
   const t1 = Date.now();
 
-  state.unsaid = computeUnsaid(resident, state.facts, state.priorCalls);
+  state.unsaid = computeUnsaid(resident, state.facts, state.priorCalls, state.segments.map((s) => s.text).join(" "));
   state.covered = computeCovered(state.facts);
   state.scores = computeScores(resident, state.facts);
   state.redFlags = evaluateRules(resident, state.facts, state.scores);

@@ -367,7 +367,7 @@ From `recallForResident()` (SurrealDB Agent Memory): calls in last 7 days with d
 **Done when:**
 - Margaret: red flags `fall_anticoag` + `new_confusion_vs_baseline`; feasibility shows "CT head: not available tonight".
 - Joseph: sepsis_pattern + NEWS2 (worsening of chronic confusion counts, physician decision); feasibility green for labs/IV/antibiotics; MOLST note visible under the flags; "3rd call this week".
-- Dorothy: `hypotension`, `tachycardia`, `sepsis_pattern`/`news2_high` fire even though the nurse said "a little low".
+- Dorothy: `hypotension`, `tachycardia`, `sepsis_pattern` (37.9 C meets the IDSA long-term care fever definition), `qsofa`, `news2_high` fire even though the nurse said "a little low".
 
 ---
 
@@ -400,9 +400,9 @@ Timeout 15 s. On error show "Could not compute. Showing raw data instead." and l
 Runs all 3 scripts through the pipeline without the UI and checks expectations:
 ```ts
 const expectations = {
-  margaret: { mustFlag: ["fall_anticoag","new_confusion_vs_baseline"], mustSurface: ["anticoagulation","baseline_mental_status"] },
+  margaret: { mustFlag: ["fall_anticoag","acute_mental_status_change"], mustSurface: ["anticoagulation","baseline_mental_status"] },
   joseph:   { mustFlag: ["sepsis_pattern"], mustNotFlag: ["hypotension","fall_anticoag"], mustSurface: ["goals_of_care","prior_calls"] },
-  dorothy:  { mustFlag: ["hypotension","tachycardia"], mustSurface: ["recent_hospitalization"] },
+  dorothy:  { mustFlag: ["hypotension","tachycardia","sepsis_pattern","qsofa"], mustSurface: ["recent_hospitalization","glucose_check"] },
 };
 ```
 Also count hallucinated quotes dropped. Print a table: case, flags expected vs fired, surfaced items, dropped quotes, PASS/FAIL. Run it 3 times (LLM variability) and report pass rate. Send results as spans to Arize with attribute `eval.case`. Screenshot this table for the slides.

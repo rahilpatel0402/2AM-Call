@@ -32,7 +32,7 @@ export type ExtractedFacts = {
 export type SourceRef = { doc: string; field: string; label: string };
 
 export type UnsaidItem = {
-  item: ChecklistItem;
+  item: ChecklistItem | "glucose_check";
   label: string;
   value: string;
   source: SourceRef;

@@ -117,9 +117,31 @@ export function computeCovered(facts: ExtractedFacts): CoveredItem[] {
   });
 }
 
-export function computeUnsaid(r: Resident, facts: ExtractedFacts, priorCalls: PriorCallMemory[], now = Date.now()): UnsaidItem[] {
+// Resident on glucose-lowering therapy with new lethargy or confusion, and no glucose stated on the call:
+// hypoglycemia is a common, reversible cause of altered mental status in older adults. Deterministic.
+const GLUCOSE_WORDS = /glucose|sugar|finger ?stick|accu-?chek|bg|cbg|poc/i;
+const ALTERED = ["lethargy", "fatigue", "drowsiness", "somnolence", "new_confusion", "confusion", "worse_confusion", "altered_mental_status", "agitation", "weakness"];
+
+function glucoseCheck(r: Resident, facts: ExtractedFacts, transcript: string): UnsaidItem | null {
+  const idx = r.medications.findIndex((m) => /insulin|sulfonylurea/i.test(m.class ?? "") || /insulin|glipizide|glyburide|glimepiride/i.test(m.name));
+  if (idx < 0 || GLUCOSE_WORDS.test(transcript)) return null;
+  const sx = facts.symptoms.find((s) => s.present && ALTERED.includes(s.name));
+  if (!sx) return null;
+  const med = r.medications[idx];
+  return {
+    item: "glucose_check",
+    label: "Fingerstick glucose",
+    value: `On ${med.name} ${med.dose} with ${sx.name.replace(/_/g, " ")} tonight. No glucose reading stated on the call.`,
+    source: { doc: r.id, field: `medications[${idx}]`, label: "medication list + call transcript" },
+  };
+}
+
+export function computeUnsaid(r: Resident, facts: ExtractedFacts, priorCalls: PriorCallMemory[], transcript = "", now = Date.now()): UnsaidItem[] {
   const mentioned = new Set(facts.mentioned_checklist.filter((m) => m.mentioned).map((m) => m.item));
-  return PRIORITY.filter((item) => !mentioned.has(item))
+  const items = PRIORITY.filter((item) => !mentioned.has(item))
     .map((item) => chartValue(item, r, priorCalls, now))
     .filter((x): x is UnsaidItem => x !== null);
+  const glucose = glucoseCheck(r, facts, transcript);
+  if (glucose) items.splice(Math.min(1, items.length), 0, glucose); // right after the top item
+  return items;
 }
