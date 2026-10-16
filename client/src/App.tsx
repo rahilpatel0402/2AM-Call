@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { Card, FacilityCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
+import { AskCard, Card, FacilityCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -261,9 +261,7 @@ export default function App() {
 
           <div className="row">
             <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} note={call?.priorCallsNote} />
-            <Card title="Ask the chart" icon="search">
-              <p className="empty">Free text chart questions, answered in an isolated sandbox.</p>
-            </Card>
+            <AskCard residentId={residentId} firstName={r?.name.split(" ")[0] ?? "this resident"} />
           </div>
         </div>
       </main>

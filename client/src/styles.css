@@ -344,3 +344,14 @@ body { margin: 0; background: var(--bg); }
 .news2-explain { font-size: 0.75rem; color: var(--muted); }
 .tile-sub { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
 .tile-plain { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 0.75em; }
+
+/* ask the chart */
+.ask-form { display: flex; gap: 8px; margin-bottom: 10px; }
+.ask-input { flex: 1; font: inherit; font-size: 0.95rem; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); }
+.btn-navy { background: var(--navy); color: #fff; }
+.chip-suggest { border: 1px solid var(--border); background: #f8fafc; color: var(--text-2); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.chip-suggest:hover { background: #eef2f6; }
+.ask-text { margin: 0 0 8px; font-size: 1.05rem; font-weight: 600; line-height: 1.4; }
+.ask-table { margin-bottom: 6px; }
+.code summary { cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--blue); margin-top: 6px; }
+.code pre { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 0.72rem; max-height: 220px; overflow: auto; white-space: pre-wrap; }

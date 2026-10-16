@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cToF, plain } from "./plain";
 import type { CoveredItem, Delta, ExtractedFacts, FeasibilityItem, News2, PriorCallMemory, RedFlag, ReportedVitals, Scores, Segment, UnsaidItem } from "./types";
 
@@ -338,6 +338,79 @@ export function FacilityCard({ items, started }: { items: FeasibilityItem[]; sta
         </div>
       )}
       {items.length > 0 && <p className="source">Source: facility overnight capability profile. Shown for information, not as a recommendation.</p>}
+    </Card>
+  );
+}
+
+// ---------- ask the chart (Daytona sandbox) ----------
+
+export type AskResult = {
+  question: string; ok: boolean; text: string; code: string; ms: number; sandbox: string;
+  table?: { columns: string[]; rows: (string | number)[][] };
+  fallback?: { columns: string[]; rows: (string | number)[][] };
+};
+
+function DataTable({ t }: { t: { columns: string[]; rows: (string | number)[][] } }) {
+  return (
+    <table className="deltas ask-table">
+      <thead><tr>{t.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+      <tbody>{t.rows.slice(0, 20).map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j}>{String(v)}</td>)}</tr>)}</tbody>
+    </table>
+  );
+}
+
+export function AskCard({ residentId, firstName }: { residentId: string; firstName: string }) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<AskResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { setRes(null); setErr(null); setQ(""); }, [residentId]);
+  const suggestions = [`Trend ${firstName}'s creatinine over 3 months`, "Blood pressure trend over the last 14 days", "List high risk medications"];
+
+  async function ask(question: string) {
+    if (!question.trim()) return;
+    setQ(question); setBusy(true); setErr(null); setRes(null);
+    try {
+      const r = await fetch(`/api/residents/${residentId}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setRes(d);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title="Ask the chart" icon="search">
+      <form className="ask-form" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
+        <input className="ask-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask anything about this chart" disabled={busy} />
+        <button className="btn btn-navy" disabled={busy || !q.trim()}>{busy ? "Running" : "Ask"}</button>
+      </form>
+      {!res && !busy && (
+        <div className="chips">
+          {suggestions.map((s) => <button key={s} className="chip chip-suggest" onClick={() => void ask(s)}>{s}</button>)}
+        </div>
+      )}
+      {busy && <p className="empty">Claude is writing code. It runs in a fresh, isolated Daytona sandbox that is deleted afterwards.</p>}
+      {err && <p className="pipeline-error">{err}</p>}
+      {res && (
+        <div className="ask-result">
+          <p className="ask-text">{res.text}</p>
+          {res.table && <DataTable t={res.table} />}
+          {res.fallback && <DataTable t={res.fallback} />}
+          <p className="source">
+            {res.ok ? `Computed in an isolated Daytona sandbox, deleted after use · ${(res.ms / 1000).toFixed(1)} s` : "Sandbox path failed; raw chart rows shown."}
+          </p>
+          {res.code && (
+            <details className="code">
+              <summary>Code that ran</summary>
+              <pre>{res.code}</pre>
+            </details>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

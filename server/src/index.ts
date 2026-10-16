@@ -4,6 +4,7 @@ import cors from "cors";
 import { env } from "./env.js";
 import { getFacilityForResident, getResident, getScript, listResidents } from "./db.js";
 import { lineAudio, prewarmAll } from "./tts.js";
+import { askChart } from "./ask.js";
 import { recallForResident, seedMemory } from "./memory.js";
 import { addSegment, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
@@ -30,6 +31,15 @@ app.get("/api/residents/:id", (req, res) => {
 app.get("/api/residents/:id/memory", async (req, res) => {
   if (!getResident(req.params.id)) return res.status(404).json({ error: "resident not found" });
   res.json(await recallForResident(req.params.id));
+});
+
+// Ask the chart: model-written code runs only in a disposable Daytona sandbox.
+app.post("/api/residents/:id/ask", async (req, res) => {
+  const r = getResident(req.params.id);
+  if (!r) return res.status(404).json({ error: "resident not found" });
+  const question = String(req.body?.question ?? "").trim().slice(0, 300);
+  if (!question) return res.status(400).json({ error: "question is required" });
+  res.json(await askChart(r, question));
 });
 
 // ---------- ElevenLabs single-use token for Scribe v2 Realtime ----------
