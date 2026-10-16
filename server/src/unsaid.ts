@@ -1,7 +1,7 @@
 // "What wasn't said": deterministic. For each checklist item NOT mentioned on the call,
 // pull the value from the chart and attach its source. No LLM involved.
 import type { Resident } from "./db.js";
-import type { ChecklistItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
+import type { ChecklistItem, CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
 
 // Display priority (most important first).
 const PRIORITY: ChecklistItem[] = [
@@ -97,6 +97,24 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
         source: { doc: r.id, field: "allergies", label: "allergy list" },
       };
   }
+}
+
+const LABELS: Record<ChecklistItem, string> = {
+  anticoagulation: "Anticoagulation",
+  code_status: "Code status / MOLST",
+  baseline_mental_status: "Baseline mental status",
+  recent_hospitalization: "Recent hospitalization",
+  goals_of_care: "Goals of care",
+  prior_calls: "Prior night calls",
+  recent_labs: "Recent labs",
+  allergies: "Allergies",
+};
+
+export function computeCovered(facts: ExtractedFacts): CoveredItem[] {
+  return PRIORITY.flatMap((item) => {
+    const m = facts.mentioned_checklist.find((x) => x.item === item && x.mentioned && x.quote);
+    return m ? [{ item, label: LABELS[item], quote: m.quote! }] : [];
+  });
 }
 
 export function computeUnsaid(r: Resident, facts: ExtractedFacts, priorCalls: PriorCallMemory[], now = Date.now()): UnsaidItem[] {

@@ -38,4 +38,7 @@ export type UnsaidItem = {
   source: SourceRef;
 };
 
+// A checklist item the call DID cover, with the quote that covered it.
+export type CoveredItem = { item: ChecklistItem; label: string; quote: string };
+
 export type PriorCallMemory = { ts: string; text: string; source: string; backend: string };

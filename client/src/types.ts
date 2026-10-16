@@ -1,6 +1,12 @@
 // Mirrors server/src/types.ts and the CallState shape pushed over SSE.
 
 export type ResidentSummary = { id: string; name: string; age: number; sex: string; room: string };
+
+export type ResidentDetail = {
+  resident: { id: string; name: string; age: number; sex: string; room: string; pcp: string; admitted: string; diagnoses: string[] };
+  facility: { id: string; name: string };
+};
+
 export type Segment = { id: string; ts: number; speaker?: "nurse" | "doctor" | "unknown"; text: string };
 
 export type ReportedVitals = {
@@ -26,14 +32,18 @@ export type UnsaidItem = {
   source: { doc: string; field: string; label: string };
 };
 
+export type CoveredItem = { item: string; label: string; quote: string };
+
 export type PriorCallMemory = { ts: string; text: string; source: string; backend: string };
 
 export type CallState = {
   callId: string;
   residentId: string;
+  startedAt: number;
   segments: Segment[];
   facts: ExtractedFacts | null;
   unsaid: UnsaidItem[];
+  covered: CoveredItem[];
   priorCalls: PriorCallMemory[];
   memoryBackend: string | null;
   status: "live" | "ended";

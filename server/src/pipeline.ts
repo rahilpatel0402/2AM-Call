@@ -3,7 +3,7 @@
 import type { CallState } from "./calls.js";
 import { getResident } from "./db.js";
 import { extractFacts } from "./extract.js";
-import { computeUnsaid } from "./unsaid.js";
+import { computeCovered, computeUnsaid } from "./unsaid.js";
 
 export async function runPipeline(state: CallState): Promise<void> {
   const resident = getResident(state.residentId);
@@ -16,4 +16,5 @@ export async function runPipeline(state: CallState): Promise<void> {
 
   // 2. What wasn't said (deterministic, chart sourced).
   state.unsaid = computeUnsaid(resident, state.facts, state.priorCalls);
+  state.covered = computeCovered(state.facts);
 }

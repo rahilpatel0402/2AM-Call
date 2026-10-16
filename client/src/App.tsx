@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
-import type { CallState, ResidentSummary } from "./types";
-import { HeardCard, PriorCallsCard, UnsaidCard } from "./Panels";
+import type { CallState, ResidentDetail, ResidentSummary } from "./types";
+import { Card, HeardCard, Icon, PriorCallsCard, Transcript, UnsaidCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -14,9 +14,24 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
   return data as T;
 }
 
+function useElapsed(startedAt: number | undefined, running: boolean) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  if (!startedAt) return "00:00";
+  const s = Math.max(0, Math.floor((now - startedAt) / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+const initials = (name: string) => name.split(" ").map((p) => p[0]).join("").slice(0, 2);
+
 export default function App() {
   const [residents, setResidents] = useState<ResidentSummary[]>([]);
   const [residentId, setResidentId] = useState("res_margaret");
+  const [detail, setDetail] = useState<ResidentDetail | null>(null);
   const [call, setCall] = useState<CallState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const callIdRef = useRef<string | null>(null);
@@ -39,6 +54,11 @@ export default function App() {
   useEffect(() => {
     fetch("/api/residents").then((r) => r.json()).then(setResidents).catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    setDetail(null);
+    fetch(`/api/residents/${residentId}`).then((r) => r.json()).then(setDetail).catch(() => {});
+  }, [residentId]);
 
   // One SSE stream per call; the server pushes the full CallState on every change.
   useEffect(() => {
@@ -94,100 +114,120 @@ export default function App() {
     if (call) await postJson(`/api/calls/${call.callId}/end`).catch(() => {});
   }
 
-  const resident = residents.find((r) => r.id === residentId);
+  const r = detail?.resident;
   const callActive = call?.status === "live";
+  const ended = call?.status === "ended";
+  const elapsed = useElapsed(call?.startedAt, !!callActive);
+  const source = scribe.isConnected ? "Live microphone" : call?.replaying ? "Replay of recorded call" : null;
 
   return (
     <div className="app">
-      <header className="header">
-        <span className="title">The 2 AM Call</span>
-        <span className="divider">|</span>
-        <span className="badge">SYNTHETIC DATA</span>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark"><Icon name="phone" size={22} /></span>
+          <div>
+            <div className="brand-name">The 2 AM Call</div>
+            <div className="brand-sub">Night call assistant for on-call physicians</div>
+          </div>
+        </div>
+        <span className="synthetic">SYNTHETIC DATA</span>
         <div className="controls">
-          <label className="resident-picker">
-            Resident
-            <select
-              value={residentId}
-              onChange={(e) => {
-                setResidentId(e.target.value);
-                if (scribe.isConnected) scribe.disconnect();
-                callIdRef.current = null;
-                setCall(null);
-              }}
-            >
-              {residents.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}, {r.age}{r.sex}, Rm {r.room}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="btn" onClick={startReplay} disabled={call?.replaying && callActive}>
-            Replay
-          </button>
-          <button className={`btn ${scribe.isConnected ? "btn-live" : ""}`} onClick={toggleLive}>
+          <select
+            className="select"
+            aria-label="Resident"
+            value={residentId}
+            onChange={(e) => {
+              setResidentId(e.target.value);
+              if (scribe.isConnected) scribe.disconnect();
+              callIdRef.current = null;
+              setCall(null);
+            }}
+          >
+            {residents.map((x) => (
+              <option key={x.id} value={x.id}>{x.name} · Rm {x.room}</option>
+            ))}
+          </select>
+          <button className="btn btn-light" onClick={startReplay} disabled={!!call?.replaying && callActive}>Replay</button>
+          <button className={`btn ${scribe.isConnected ? "btn-danger" : "btn-light"}`} onClick={toggleLive}>
             {scribe.isConnected ? "Stop live" : "Live"}
           </button>
         </div>
       </header>
 
+      <div className="patient-banner">
+        <div className="avatar">{r ? initials(r.name) : ""}</div>
+        <div className="patient-main">
+          <div className="patient-name">{r?.name ?? "Loading"}</div>
+          {r && (
+            <div className="patient-meta">
+              <span>{r.age} {r.sex === "F" ? "Female" : "Male"}</span>
+              <span>Room {r.room}</span>
+              <span>{detail?.facility.name}</span>
+              <span>PCP {r.pcp}</span>
+            </div>
+          )}
+        </div>
+        <div className={`call-status ${callActive ? "is-live" : ended ? "is-ended" : ""}`}>
+          {callActive ? (
+            <>
+              <span className="pulse" />
+              <div>
+                <div className="call-status-title">Call in progress · {elapsed}</div>
+                {source && <div className="call-status-sub">{source}</div>}
+              </div>
+            </>
+          ) : ended ? (
+            <div className="call-status-title">Call ended</div>
+          ) : (
+            <div className="call-status-title">No active call</div>
+          )}
+        </div>
+      </div>
+
       {error && <div className="error-bar">{error}</div>}
+      {call?.pipelineError && <div className="error-bar">Analysis error: {call.pipelineError}</div>}
 
       <main className="layout">
-        <section className="card transcript">
-          <h2>
-            Live transcript
-            {callActive && (scribe.isConnected || call?.replaying) && <span className="live-dot">LIVE</span>}
-            {call?.processing && <span className="analyzing">analyzing</span>}
-          </h2>
-          {call?.pipelineError && <p className="pipeline-error">Analysis error: {call.pipelineError}</p>}
-          {!call && <p className="muted">Choose a resident, then click Replay or Live.</p>}
-          {call && resident && <p className="muted small">Call about {resident.name}</p>}
-          <div className="lines">
-            {call?.segments.map((s) => (
-              <p key={s.id} className={`line line-${s.speaker ?? "unknown"}`}>
-                {s.speaker && s.speaker !== "unknown" && <span className="speaker">{s.speaker}:</span>} {s.text}
-              </p>
-            ))}
-            {scribe.isConnected && scribe.partialTranscript && <p className="line partial">{scribe.partialTranscript}</p>}
-            <div ref={transcriptEnd} />
-          </div>
-        </section>
+        <Card title="Call transcript" icon="phone" className="transcript-card">
+          <Transcript
+            segments={call?.segments ?? []}
+            partial={scribe.isConnected ? scribe.partialTranscript : undefined}
+            hint="Choose a resident, then start a Replay or a Live call."
+          />
+          <div ref={transcriptEnd} />
+        </Card>
 
-        <section className="panels">
-          <div className="card red-flags">
-            <h2>Red flags</h2>
-            <p className="muted">No rule based red flags yet.</p>
+        <div className="panels">
+          <Card title="Red flags" icon="flag" tone="neutral" className="flags">
+            <p className="empty">Rule based red flags will appear here. The physician makes every disposition decision.</p>
+          </Card>
+
+          <div className="row row-primary">
+            <UnsaidCard items={call?.facts ? call.unsaid : []} covered={call?.covered ?? []} started={!!call?.facts} ended={!!ended} />
+            <HeardCard facts={call?.facts ?? null} started={!!call} processing={!!call?.processing} />
           </div>
+
           <div className="row">
-            <UnsaidCard items={call?.facts ? call.unsaid : []} started={!!call?.facts} />
-            <HeardCard facts={call?.facts ?? null} started={!!call} />
+            <Card title="Vitals vs baseline · NEWS2" icon="pulse">
+              <p className="empty">Compared with this resident's own 14 day baseline.</p>
+            </Card>
+            <Card title="Facility capability tonight" icon="building">
+              <p className="empty">What this facility can and cannot do overnight.</p>
+            </Card>
           </div>
-          <div className="row">
-            <div className="card">
-              <h2>Vs baseline + NEWS2</h2>
-              <p className="muted">Waiting for vitals.</p>
-            </div>
-            <div className="card">
-              <h2>Facility tonight</h2>
-              <p className="muted">Waiting for the call.</p>
-            </div>
-          </div>
+
           <div className="row">
             <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} />
-            <div className="card">
-              <h2>Ask the chart</h2>
-              <p className="muted">Available during a call.</p>
-            </div>
+            <Card title="Ask the chart" icon="search">
+              <p className="empty">Free text chart questions, answered in an isolated sandbox.</p>
+            </Card>
           </div>
-        </section>
+        </div>
       </main>
 
-      <footer className="footer">
-        <button className="btn" onClick={endCurrentCall} disabled={!callActive}>
-          End call
-        </button>
-        <span className="muted small">The physician makes every disposition decision.</span>
+      <footer className="actionbar">
+        <button className="btn btn-outline" onClick={endCurrentCall} disabled={!callActive}>End call</button>
+        <span className="disclaimer">Decision support only. The physician makes every disposition decision.</span>
       </footer>
     </div>
   );

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { getScript, type ScriptLine } from "./db.js";
 import { runPipeline } from "./pipeline.js";
 import { recallForResident } from "./memory.js";
-import type { ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
+import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -16,6 +16,7 @@ export type CallState = {
   segments: Segment[];
   facts: ExtractedFacts | null;
   unsaid: UnsaidItem[];
+  covered: CoveredItem[];
   redFlags: unknown[];         // Phase 4
   scores: unknown | null;      // Phase 4
   feasibility: unknown[];      // Phase 4
@@ -39,6 +40,7 @@ export function createCall(residentId: string): CallState {
     segments: [],
     facts: null,
     unsaid: [],
+    covered: [],
     redFlags: [],
     scores: null,
     feasibility: [],
