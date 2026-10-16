@@ -8,7 +8,7 @@
 //   never "do not send".
 // - Tuned for older adults in skilled nursing facilities (atypical presentation, blunted fever and
 //   heart rate responses, delirium superimposed on dementia). Guideline basis is cited per rule.
-// - Thresholds reviewed by: ______ (physician), date ______.
+// - Thresholds reviewed by:Rahil Patel, date 10/16/2026
 import type { Resident } from "../db.js";
 import type { ExtractedFacts } from "../types.js";
 import type { Scores } from "../scores.js";

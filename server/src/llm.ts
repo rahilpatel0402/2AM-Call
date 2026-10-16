@@ -3,12 +3,12 @@
 import "./env.js";
 import { env } from "./env.js";
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  BedrockRuntimeClient,
-  ConverseCommand,
-  type Message as BedrockMessage,
-  type Tool as BedrockTool,
-} from "@aws-sdk/client-bedrock-runtime";
+import { createRequire } from "node:module";
+import type { Message as BedrockMessage, Tool as BedrockTool } from "@aws-sdk/client-bedrock-runtime";
+
+// Loaded via require (CommonJS) so the Arize Bedrock instrumentor in instrumentation.ts can patch it.
+const require = createRequire(import.meta.url);
+const { BedrockRuntimeClient, ConverseCommand } = require("@aws-sdk/client-bedrock-runtime") as typeof import("@aws-sdk/client-bedrock-runtime");
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -71,7 +71,7 @@ async function callAnthropic({ system, messages, tools, maxTokens = 4096, effort
 
 // ---------- AWS Bedrock (Converse API) ----------
 
-let bedrockClient: BedrockRuntimeClient | null = null;
+let bedrockClient: InstanceType<typeof BedrockRuntimeClient> | null = null;
 
 async function callBedrock({ system, messages, tools, maxTokens = 4096, effort }: CallClaudeArgs): Promise<ClaudeResult> {
   const modelId = env("BEDROCK_MODEL_ID");

@@ -1,4 +1,4 @@
-import "./env.js";
+import "./instrumentation.js"; // first: tracing must patch the AWS SDK before any client exists
 import express from "express";
 import cors from "cors";
 import { env } from "./env.js";
