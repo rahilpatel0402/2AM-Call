@@ -32,7 +32,7 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
       const idx = r.medications.findIndex((m) => m.class === "anticoagulant" || m.class === "antiplatelet");
       if (idx < 0) return null;
       const meds = r.medications.filter((m) => m.class === "anticoagulant" || m.class === "antiplatelet");
-      const label = meds.some((m) => m.class === "anticoagulant") ? "Anticoagulant" : "Antiplatelet";
+      const label = meds.some((m) => m.class === "anticoagulant") ? "Blood thinner (anticoagulant)" : "Blood thinner (antiplatelet)";
       return {
         item, label,
         value: meds.map((m) => `${m.name} ${m.dose}`).join(", "),
@@ -41,13 +41,13 @@ function chartValue(item: ChecklistItem, r: Resident, priorCalls: PriorCallMemor
     }
     case "code_status":
       return {
-        item, label: "Code status / MOLST",
+        item, label: "Resuscitation and hospital wishes",
         value: `${r.code_status.value}. MOLST: ${r.code_status.molst}`,
         source: { doc: r.code_status.source, field: "code_status", label: r.code_status.source },
       };
     case "baseline_mental_status":
       return {
-        item, label: "Baseline mental status",
+        item, label: "Usual mental status",
         value: r.baseline.mental_status,
         source: { doc: r.baseline.source, field: "baseline.mental_status", label: r.baseline.source },
       };

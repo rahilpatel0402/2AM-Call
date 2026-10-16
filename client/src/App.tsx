@@ -173,7 +173,7 @@ export default function App() {
           <span className="brand-mark"><Icon name="phone" size={22} /></span>
           <div>
             <div className="brand-name">The 2 AM Call</div>
-            <div className="brand-sub">Night call assistant for on-call physicians</div>
+            <div className="brand-sub">AI co-pilot for the night call from a nursing home</div>
           </div>
         </div>
         <span className="synthetic">SYNTHETIC DATA</span>
@@ -213,7 +213,7 @@ export default function App() {
               <span>{r.age} {r.sex === "F" ? "Female" : "Male"}</span>
               <span>Room {r.room}</span>
               <span>{detail?.facility.name}</span>
-              <span>PCP {r.pcp}</span>
+              <span>Primary doctor {r.pcp}</span>
             </div>
           )}
         </div>

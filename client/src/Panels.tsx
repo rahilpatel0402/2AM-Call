@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { cToF, plain } from "./plain";
 import type { CoveredItem, Delta, ExtractedFacts, FeasibilityItem, News2, PriorCallMemory, RedFlag, ReportedVitals, Scores, Segment, UnsaidItem } from "./types";
 
 // ---------- shared card chrome ----------
@@ -91,7 +92,7 @@ export function UnsaidCard({
         {items.map((u) => (
           <li key={u.item} className="item item-amber">
             <div className="item-label">{u.label}</div>
-            <div className="item-value">{u.value}</div>
+            <div className="item-value">{plain(u.value)}</div>
             <div className="source">Source: {u.source.label}</div>
           </li>
         ))}
@@ -136,12 +137,12 @@ export function HeardCard({ facts, started, processing }: { facts: ExtractedFact
     );
   }
   const v = mergeVitals(facts.vitals_reported);
-  const tiles: { label: string; value: string; quote: string }[] = [];
-  if (v.sbp) tiles.push({ label: "BP", value: `${v.sbp.value}${v.dbp ? `/${v.dbp.value}` : ""}`, quote: v.sbp.quote });
-  if (v.hr) tiles.push({ label: "HR", value: String(v.hr.value), quote: v.hr.quote });
-  if (v.rr) tiles.push({ label: "RR", value: String(v.rr.value), quote: v.rr.quote });
-  if (v.spo2) tiles.push({ label: "SpO2", value: `${v.spo2.value}%`, quote: v.spo2.quote });
-  if (v.temp_c) tiles.push({ label: "Temp", value: `${Number(v.temp_c.value).toFixed(1)}°C`, quote: v.temp_c.quote });
+  const tiles: { label: string; value: string; sub?: string; quote: string }[] = [];
+  if (v.sbp) tiles.push({ label: "Blood pressure", value: `${v.sbp.value}${v.dbp ? `/${v.dbp.value}` : ""}`, quote: v.sbp.quote });
+  if (v.hr) tiles.push({ label: "Heart rate", value: String(v.hr.value), quote: v.hr.quote });
+  if (v.rr) tiles.push({ label: "Breathing", value: String(v.rr.value), quote: v.rr.quote });
+  if (v.spo2) tiles.push({ label: "Oxygen", value: `${v.spo2.value}%`, quote: v.spo2.quote });
+  if (v.temp_c) tiles.push({ label: "Temp", value: `${Number(v.temp_c.value).toFixed(1)}°C`, sub: `${cToF(Number(v.temp_c.value))}°F`, quote: v.temp_c.quote });
 
   const present = facts.symptoms.filter((s) => s.present);
   const denied = facts.symptoms.filter((s) => !s.present);
@@ -157,9 +158,10 @@ export function HeardCard({ facts, started, processing }: { facts: ExtractedFact
             <div key={t.label} className="tile" title={`"${t.quote}"`}>
               <div className="tile-label">{t.label}</div>
               <div className="tile-value">{t.value}</div>
+              {t.sub && <div className="tile-sub">{t.sub}</div>}
             </div>
           ))}
-          {v.o2 && <div className="tile tile-text" title={`"${v.o2.quote}"`}><div className="tile-label">O2</div><div className="tile-value small">{v.o2.value}</div></div>}
+          {v.o2 && <div className="tile tile-text" title={`"${v.o2.quote}"`}><div className="tile-label">Support</div><div className="tile-value small">{v.o2.value}</div></div>}
         </div>
       )}
       {facts.events.map((e, i) => (
@@ -234,6 +236,7 @@ export function RedFlagsCard({ flags, goalsNote, started }: { flags: RedFlag[]; 
             {flags.map((f) => (
               <div key={f.id} className="flag">
                 <div className="flag-title">{f.title}</div>
+                <div className="flag-clinical">{f.clinical}</div>
                 <div className="flag-why">{f.why}</div>
                 <ul className="flag-evidence">
                   {f.evidence.map((e) => <li key={e}>{e}</li>)}
@@ -242,7 +245,7 @@ export function RedFlagsCard({ flags, goalsNote, started }: { flags: RedFlag[]; 
             ))}
           </div>
         )}
-        {started && goalsNote && <div className="goals-note">{goalsNote}</div>}
+        {started && goalsNote && <div className="goals-note">{plain(goalsNote)}</div>}
       </div>
     </section>
   );
@@ -250,7 +253,8 @@ export function RedFlagsCard({ flags, goalsNote, started }: { flags: RedFlag[]; 
 
 // ---------- vitals vs baseline + NEWS2 ----------
 
-const BAND_LABEL: Record<News2["band"], string> = { low: "Low", "low-medium": "Low-medium", medium: "Medium", high: "High" };
+const BAND_LABEL: Record<News2["band"], string> = { low: "Low risk", "low-medium": "Low-medium risk", medium: "Medium risk", high: "High risk" };
+const DELTA_LABEL: Record<string, string> = { sbp: "Systolic BP", hr: "Heart rate", rr: "Breathing rate", spo2: "Oxygen %", temp_c: "Temp °C" };
 
 function fmt(key: string, n: number) {
   return key === "temp_c" ? n.toFixed(1) : String(Math.round(n * 10) / 10);
@@ -259,7 +263,7 @@ function fmt(key: string, n: number) {
 export function VitalsCard({ scores }: { scores: Scores | null }) {
   if (!scores) {
     return (
-      <Card title="Vitals vs baseline · NEWS2" icon="pulse">
+      <Card title="Vitals vs this resident's normal" icon="pulse">
         <p className="empty">Tonight's vitals against this resident's own 14 day baseline, with NEWS2 computed in code.</p>
       </Card>
     );
@@ -270,11 +274,12 @@ export function VitalsCard({ scores }: { scores: Scores | null }) {
     (d.key === "sbp" && Math.abs(d.diff) >= 20) || (d.key === "hr" && Math.abs(d.diff) >= 15) ||
     (d.key === "rr" && Math.abs(d.diff) >= 4) || (d.key === "spo2" && d.diff <= -3) || (d.key === "temp_c" && Math.abs(d.diff) >= 1);
   return (
-    <Card title="Vitals vs baseline · NEWS2" icon="pulse">
+    <Card title="Vitals vs this resident's normal" icon="pulse">
       <div className={`news2 band-${news2.band}`}>
         <div className="news2-score">{news2.total}</div>
         <div>
-          <div className="news2-label">NEWS2 · {BAND_LABEL[news2.band]}</div>
+          <div className="news2-label">Early warning score · {BAND_LABEL[news2.band]}</div>
+          <div className="news2-explain">NEWS2, the UK national score from 0 to 20. 7 or more means high risk of deterioration.</div>
           <div className="news2-parts">
             {news2.parts.filter((p) => p.points > 0).map((p) => `${p.param} +${p.points}`).join(" · ") || "All parameters 0"}
           </div>
@@ -283,12 +288,12 @@ export function VitalsCard({ scores }: { scores: Scores | null }) {
       </div>
       <table className="deltas">
         <thead>
-          <tr><th></th><th>Tonight</th><th>Usual</th><th>Change</th></tr>
+          <tr><th></th><th>Tonight</th><th>Their usual</th><th>Change</th></tr>
         </thead>
         <tbody>
           {deltas.map((d) => (
             <tr key={d.key} className={notable(d) ? "notable" : ""}>
-              <td className="d-label">{d.label}</td>
+              <td className="d-label">{DELTA_LABEL[d.key] ?? d.label}</td>
               <td className="d-now">{fmt(d.key, d.current)}{d.from === "chart" && <span className="from-chart" title="Not stated on the call; last charted value">chart</span>}</td>
               <td>{fmt(d.key, d.baseline)}</td>
               <td className="d-diff">{d.diff > 0 ? "▲" : d.diff < 0 ? "▼" : ""} {d.diff === 0 ? "0" : fmt(d.key, Math.abs(d.diff))}</td>

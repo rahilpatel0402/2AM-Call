@@ -32,7 +32,7 @@
   "medications": [
     {
       "name": "apixaban",
-      "dose": "5 mg BID",
+      "dose": "5 mg twice daily",
       "class": "anticoagulant",
       "high_risk": true
     },
@@ -48,7 +48,7 @@
     },
     {
       "name": "acetaminophen",
-      "dose": "650 mg q6h PRN pain",
+      "dose": "650 mg every 6 hours as needed for pain",
       "class": "analgesic"
     },
     {

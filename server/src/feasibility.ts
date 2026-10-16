@@ -39,24 +39,24 @@ export function computeFeasibility(r: Resident, f: Facility, facts: ExtractedFac
   const poorIntake = has(facts, ["poor_intake", "dehydration"]);
 
   if (infection || lowBp) {
-    add({ need: infection ? "Possible infection" : "Low blood pressure", capability: "Stat labs (CBC, BMP, cultures)", available: o.stat_labs.available,
+    add({ need: infection ? "Possible infection" : "Low blood pressure", capability: "Urgent blood tests and cultures", available: o.stat_labs.available,
       detail: o.stat_labs.available ? `about ${o.stat_labs.turnaround_hours} h turnaround, results by about ${clockPlus(o.stat_labs.turnaround_hours, now)}` : "not available overnight",
       source: "facility.overnight.stat_labs" });
   }
   if (infection) {
-    add({ need: "Possible infection", capability: "IV antibiotics", available: o.iv_antibiotics,
+    add({ need: "Possible infection", capability: "IV (drip) antibiotics", available: o.iv_antibiotics,
       detail: o.iv_antibiotics ? `pharmacy stat delivery about ${o.pharmacy_stat_delivery_hours} h` : "not available overnight", source: "facility.overnight.iv_antibiotics" });
   }
   if (infection || lowBp || poorIntake) {
-    add({ need: lowBp ? "Low blood pressure" : poorIntake ? "Poor oral intake" : "Possible infection", capability: "IV fluids", available: o.iv_fluids,
+    add({ need: lowBp ? "Low blood pressure" : poorIntake ? "Poor oral intake" : "Possible infection", capability: "IV (drip) fluids", available: o.iv_fluids,
       detail: o.iv_fluids ? "available tonight" : "not available overnight", source: "facility.overnight.iv_fluids" });
   }
   if (lowBp) {
-    add({ need: "Low blood pressure", capability: "Continuous cardiac monitoring", available: o.telemetry,
+    add({ need: "Low blood pressure", capability: "Continuous heart monitoring", available: o.telemetry,
       detail: o.telemetry ? "available" : "no telemetry overnight", source: "facility.overnight.telemetry" });
   }
   if (headStrike) {
-    add({ need: "Head strike", capability: "CT head", available: o.ct_imaging,
+    add({ need: "Head strike", capability: "CT scan of the head", available: o.ct_imaging,
       detail: o.ct_imaging ? "available tonight" : "not available tonight (no on-site CT)", source: "facility.overnight.ct_imaging" });
   }
   if (limbPain || (infection && has(facts, ["cough"])) || breathing) {
@@ -65,14 +65,14 @@ export function computeFeasibility(r: Resident, f: Facility, facts: ExtractedFac
   }
   if (breathing) {
     add({ need: "Breathing", capability: `Oxygen up to ${o.oxygen_max_lpm} L/min`, available: o.oxygen_max_lpm > 0,
-      detail: "no high-flow oxygen or BiPAP", source: "facility.overnight.oxygen_max_lpm" });
+      detail: "no high-flow oxygen or breathing machine (BiPAP)", source: "facility.overnight.oxygen_max_lpm" });
   }
   if (chestPain) {
-    add({ need: "Chest pain", capability: "Cardiac telemetry", available: o.telemetry,
+    add({ need: "Chest pain", capability: "Continuous heart monitoring", available: o.telemetry,
       detail: o.telemetry ? "available" : "not available overnight", source: "facility.overnight.telemetry" });
   }
   if (items.length) {
-    add({ need: "Overnight staffing", capability: "RN on site", available: o.rn_on_site, detail: o.rn_on_site ? "for reassessment overnight" : "no RN overnight", source: "facility.overnight.rn_on_site" });
+    add({ need: "Overnight staffing", capability: "Registered nurse on site", available: o.rn_on_site, detail: o.rn_on_site ? "for reassessment overnight" : "no RN overnight", source: "facility.overnight.rn_on_site" });
   }
   return items;
 }

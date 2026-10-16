@@ -338,3 +338,8 @@ body { margin: 0; background: var(--bg); }
 
 .audio-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #cfdcf0; cursor: pointer; }
 .audio-toggle input { width: 16px; height: 16px; accent-color: #7cc4fa; }
+
+/* plain-language layer */
+.flag-clinical { font-size: 0.75rem; font-weight: 700; color: #912018; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+.news2-explain { font-size: 0.75rem; color: var(--muted); }
+.tile-sub { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
