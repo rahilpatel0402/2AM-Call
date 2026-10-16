@@ -59,6 +59,29 @@ export async function chartFor(state: CallState): Promise<Resident> {
 
 const preparedSessions = new Map<string, Promise<PreparedSession>>();
 
+const postSessions = new Map<string, { agent: EhrAgent; session: Promise<PreparedSession> }>();
+
+// When the physician chooses a disposition: open the portal for posting the note, so the live view is
+// streaming (minimized) by the time they sign.
+export function prepareEhrPost(state: CallState) {
+  if (postSessions.has(state.callId) || !anchorReady().ok) return;
+  const agent: EhrAgent = { status: "ready", task: "post", liveViewUrl: null, detail: "Facility EHR portal ready for the signed note", found: [], matchesChart: null, ms: null };
+  const session = prepareEhrSession(agent, () => {
+    if (state.ehrAgent?.task !== "pull" || ["done", "failed"].includes(state.ehrAgent.status)) state.ehrAgent = agent;
+    agent.status = agent.status === "starting" ? "ready" : agent.status;
+    agent.detail = "Facility EHR portal ready for the signed note";
+    broadcast(state);
+  });
+  session.catch(() => postSessions.delete(state.callId));
+  postSessions.set(state.callId, { agent, session });
+}
+
+export function takePostSession(state: CallState) {
+  const p = postSessions.get(state.callId);
+  postSessions.delete(state.callId);
+  return p ?? null;
+}
+
 // At call start: open the portal in the cloud browser so its live view is already streaming.
 export function prepareEhr(state: CallState) {
   state.wantsEhr = true;

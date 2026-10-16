@@ -531,7 +531,7 @@ export function EhrStrip({ residentId, enabled }: { residentId: string; enabled:
 // ---------- Anchor EHR agent: picture-in-picture live view ----------
 
 export type EhrAgent = {
-  status: "starting" | "reading" | "posting" | "done" | "posted" | "failed";
+  status: "starting" | "ready" | "reading" | "posting" | "done" | "posted" | "failed";
   task: "pull" | "post";
   liveViewUrl: string | null;
   detail: string;
@@ -541,16 +541,18 @@ export type EhrAgent = {
 };
 
 export function EhrAgentPip({ agent }: { agent: EhrAgent }) {
-  const [min, setMin] = useState(false);
+  // The posting window opens minimized ("ready") when the physician decides, and expands on Sign.
+  const [min, setMin] = useState(agent.status === "ready");
   // After reading the chart the window tucks away; it opens again when posting the signed note.
   useEffect(() => {
+    if (agent.status === "posting") setMin(false);
     if (agent.task === "pull" && (agent.status === "done" || agent.status === "failed")) {
       const t = setTimeout(() => setMin(true), 2500);
       return () => clearTimeout(t);
     }
   }, [agent.status, agent.task]);
   const working = agent.status === "starting" || agent.status === "reading" || agent.status === "posting";
-  const title = agent.task === "post" ? "Posting signed note to facility EHR" : "Reading facility EHR";
+  const title = agent.task === "post" ? (agent.status === "ready" ? "Facility EHR ready for the signed note" : "Posting signed note to facility EHR") : "Reading facility EHR";
   return (
     <div className={`pip ${min ? "pip-min" : ""} pip-${agent.status}`}>
       <div className="pip-head">
@@ -558,13 +560,14 @@ export function EhrAgentPip({ agent }: { agent: EhrAgent }) {
         <span className="pip-title">Anchor agent · {title}</span>
         <button className="pip-btn" onClick={() => setMin(!min)} aria-label={min ? "Expand" : "Minimize"}>{min ? "▢" : "–"}</button>
       </div>
+      {/* The live view stays mounted while minimized so its stream is already connected when expanded. */}
+      <div className={`pip-view ${min ? "pip-view-hidden" : ""}`}>
+        {agent.liveViewUrl
+          ? <iframe src={agent.liveViewUrl} title="Anchor live browser" sandbox="allow-same-origin allow-scripts" allow="clipboard-read; clipboard-write" />
+          : <div className="pip-wait">Opening a secure cloud browser</div>}
+      </div>
       {!min && (
         <>
-          <div className="pip-view">
-            {agent.liveViewUrl
-              ? <iframe src={agent.liveViewUrl} title="Anchor live browser" sandbox="allow-same-origin allow-scripts" allow="clipboard-read; clipboard-write" />
-              : <div className="pip-wait">Opening a secure cloud browser</div>}
-          </div>
           <div className="pip-foot">
             <div className="pip-detail">{agent.detail}{agent.ms ? ` (${Math.round(agent.ms / 1000)} s)` : ""}</div>
             {agent.found.length > 0 && (

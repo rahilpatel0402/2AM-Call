@@ -418,3 +418,4 @@ body { margin: 0; background: var(--bg); }
 .chart-ehr { background: var(--green-bg); color: var(--green); }
 .chart-pending { background: var(--blue-bg); color: var(--blue); }
 .chart-local { background: #f1f5f9; color: var(--muted); }
+.pip-view.pip-view-hidden { height: 0; visibility: hidden; }

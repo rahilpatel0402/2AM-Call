@@ -118,7 +118,7 @@ export async function postNote(r: Resident, physician: string, note: string): Pr
 // ---------- live EHR agent: runs at call start, watched in a picture-in-picture live view ----------
 
 export type EhrAgent = {
-  status: "starting" | "reading" | "posting" | "done" | "posted" | "failed";
+  status: "starting" | "ready" | "reading" | "posting" | "done" | "posted" | "failed";
   task: "pull" | "post";
   liveViewUrl: string | null;
   detail: string;
@@ -208,7 +208,7 @@ export async function runEhrPull(r: Resident, agent: EhrAgent, changed: () => vo
 
 // Called on Sign: posts the signed note into the portal by driving the Anchor cloud browser directly over CDP
 // (Playwright), which is fast and deterministic; the live view shows each step and where the note lands.
-export async function runEhrPost(r: Resident, physician: string, note: string, agent: EhrAgent, changed: () => void): Promise<void> {
+export async function runEhrPost(r: Resident, physician: string, note: string, agent: EhrAgent, changed: () => void, prepared?: Promise<PreparedSession>): Promise<void> {
   const base = ehrPublicUrl()!;
   const before = notesFor(r.id).length;
   const t0 = Date.now();
@@ -220,10 +220,11 @@ export async function runEhrPost(r: Resident, physician: string, note: string, a
   };
   await span("anchor.ehr_post_note", "TOOL", { "resident.id": r.id, "input.value": note }, async () => {
     try {
-      const s = await openSession(`${base}/ehr/`);
+      // Usually opened when the physician chose the disposition, so the live view is already streaming.
+      const s = prepared ? await prepared : { ...(await openSession(`${base}/ehr/`)), liveSince: Date.now() };
       sessionId = s.id;
       Object.assign(agent, { task: "post", status: "posting", liveViewUrl: s.liveViewUrl, found: [], matchesChart: null });
-      await step("Cloud browser open on the facility EHR portal", 3000); // let the live view connect first
+      await step("Facility EHR portal open", Math.max(800, LIVE_VIEW_WARMUP_MS - (Date.now() - s.liveSince)));
       const browser = await chromium.connectOverCDP(s.cdpUrl);
       const context = browser.contexts()[0] ?? (await browser.newContext());
       const page = context.pages()[0] ?? (await context.newPage());

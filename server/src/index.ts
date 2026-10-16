@@ -11,7 +11,7 @@ import { rememberCall, resetDemoMemory } from "./memory.js";
 import { mockEhrRouter } from "./mockEhr.js";
 import { anchorReady, pullChart, runEhrPost, type EhrAgent } from "./anchor.js";
 import { recallForResident, seedMemory } from "./memory.js";
-import { addSegment, broadcast, createCall, prepareEhr, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
+import { addSegment, broadcast, createCall, prepareEhr, prepareEhrPost, takePostSession, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
 const app = express();
 app.use(cors());
@@ -173,6 +173,7 @@ app.post("/api/calls/:id/note", async (req, res) => {
   if (disposition !== "transfer" && disposition !== "treat_in_place") return res.status(400).json({ error: "disposition must be transfer or treat_in_place" });
   try {
     state.disposition = disposition;
+    prepareEhrPost(state); // warm the posting browser while the physician reviews the note
     state.note = await draftNote(state, disposition);
     broadcast(state);
     res.json({ note: state.note });
@@ -198,7 +199,10 @@ app.post("/api/calls/:id/sign", async (req, res) => {
   }
   // Post the signed note into the facility EHR portal in the background (Anchor Browser).
   if (anchorReady().ok) {
-    const agent: EhrAgent = { status: "starting", task: "post", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+    const prepared = takePostSession(state);
+    const agent: EhrAgent = prepared?.agent ?? { status: "starting", task: "post", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+    agent.status = "posting";
+    agent.detail = "Posting the signed note";
     state.ehrAgent = agent;
     state.ehrPost = { status: "posting", detail: "Anchor is signing into the facility EHR portal" };
     const changed = () => {
@@ -206,7 +210,7 @@ app.post("/api/calls/:id/sign", async (req, res) => {
       if (agent.status === "failed") state.ehrPost = { status: "failed", detail: agent.detail };
       broadcast(state);
     };
-    void runEhrPost(getResident(state.residentId)!, physician, note, agent, changed);
+    void runEhrPost(getResident(state.residentId)!, physician, note, agent, changed, prepared?.session);
   }
   broadcast(state);
   res.json({ ok: true, remembered: m });
