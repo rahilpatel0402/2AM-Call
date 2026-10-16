@@ -30,6 +30,7 @@ export type CallClaudeArgs = {
   messages: ChatMessage[];
   tools?: ToolDef[];
   maxTokens?: number;
+  effort?: "low" | "medium" | "high"; // lower effort = faster; omit for the model default
 };
 
 export function llmProvider(): "bedrock" | "anthropic" {
@@ -44,7 +45,7 @@ export async function callClaude(args: CallClaudeArgs): Promise<ClaudeResult> {
 
 let anthropicClient: Anthropic | null = null;
 
-async function callAnthropic({ system, messages, tools, maxTokens = 4096 }: CallClaudeArgs): Promise<ClaudeResult> {
+async function callAnthropic({ system, messages, tools, maxTokens = 4096, effort }: CallClaudeArgs): Promise<ClaudeResult> {
   if (!env("ANTHROPIC_API_KEY")) throw new Error("ANTHROPIC_API_KEY is not set");
   anthropicClient ??= new Anthropic({ apiKey: env("ANTHROPIC_API_KEY") });
 
@@ -53,6 +54,7 @@ async function callAnthropic({ system, messages, tools, maxTokens = 4096 }: Call
     max_tokens: maxTokens,
     ...(system ? { system } : {}),
     messages,
+    ...(effort ? { output_config: { effort } } : {}),
     ...(tools?.length
       ? { tools: tools.map((t) => ({ ...t, input_schema: t.input_schema as Anthropic.Tool.InputSchema })) }
       : {}),
@@ -71,7 +73,7 @@ async function callAnthropic({ system, messages, tools, maxTokens = 4096 }: Call
 
 let bedrockClient: BedrockRuntimeClient | null = null;
 
-async function callBedrock({ system, messages, tools, maxTokens = 4096 }: CallClaudeArgs): Promise<ClaudeResult> {
+async function callBedrock({ system, messages, tools, maxTokens = 4096, effort }: CallClaudeArgs): Promise<ClaudeResult> {
   const modelId = env("BEDROCK_MODEL_ID");
   if (!modelId) throw new Error("BEDROCK_MODEL_ID is not set");
   if (!env("AWS_ACCESS_KEY_ID")) throw new Error("AWS_ACCESS_KEY_ID is not set");
@@ -96,6 +98,7 @@ async function callBedrock({ system, messages, tools, maxTokens = 4096 }: CallCl
       messages: bedrockMessages,
       ...(system ? { system: [{ text: system }] } : {}),
       inferenceConfig: { maxTokens },
+      ...(effort ? { additionalModelRequestFields: { output_config: { effort } } } : {}),
       ...(bedrockTools?.length ? { toolConfig: { tools: bedrockTools } } : {}),
     }),
   );

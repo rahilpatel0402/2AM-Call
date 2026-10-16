@@ -163,3 +163,44 @@ body {
   background: #fff;
   border-top: 1px solid var(--border);
 }
+
+/* Phase 3: facts + unsaid */
+.analyzing {
+  font-size: 0.7rem;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pipeline-error { color: var(--red); font-size: 0.8rem; margin: 0 0 8px; }
+.unsaid-list { list-style: none; margin: 0; padding: 0; }
+.unsaid-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  animation: slide-in 0.3s ease-out;
+}
+.unsaid-item:last-child { border-bottom: none; }
+.unsaid .unsaid-item strong { color: var(--amber); }
+.source { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 6px 0 0;
+}
+.fact { margin: 0 0 6px; }
+.vitals-line { display: flex; flex-wrap: wrap; gap: 6px 14px; font-weight: 600; }
+.vital { cursor: help; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; cursor: help; }
+.chip-present { background: #e0e7ff; color: #1e3a8a; font-weight: 600; }
+.chip-denied { background: #f1f5f9; color: var(--muted); }
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}

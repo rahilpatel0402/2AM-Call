@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
-
-type ResidentSummary = { id: string; name: string; age: number; sex: string; room: string };
-type Segment = { id: string; ts: number; speaker?: "nurse" | "doctor" | "unknown"; text: string };
-type CallState = {
-  callId: string;
-  residentId: string;
-  segments: Segment[];
-  status: "live" | "ended";
-  replaying: boolean;
-};
+import type { CallState, ResidentSummary } from "./types";
+import { HeardCard, PriorCallsCard, UnsaidCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -146,7 +138,9 @@ export default function App() {
           <h2>
             Live transcript
             {callActive && (scribe.isConnected || call?.replaying) && <span className="live-dot">LIVE</span>}
+            {call?.processing && <span className="analyzing">analyzing</span>}
           </h2>
+          {call?.pipelineError && <p className="pipeline-error">Analysis error: {call.pipelineError}</p>}
           {!call && <p className="muted">Choose a resident, then click Replay or Live.</p>}
           {call && resident && <p className="muted small">Call about {resident.name}</p>}
           <div className="lines">
@@ -166,14 +160,8 @@ export default function App() {
             <p className="muted">No rule based red flags yet.</p>
           </div>
           <div className="row">
-            <div className="card unsaid">
-              <h2>What wasn't said</h2>
-              <p className="muted">Waiting for the call.</p>
-            </div>
-            <div className="card">
-              <h2>Heard on call</h2>
-              <p className="muted">Waiting for the call.</p>
-            </div>
+            <UnsaidCard items={call?.facts ? call.unsaid : []} started={!!call?.facts} />
+            <HeardCard facts={call?.facts ?? null} started={!!call} />
           </div>
           <div className="row">
             <div className="card">
@@ -186,10 +174,7 @@ export default function App() {
             </div>
           </div>
           <div className="row">
-            <div className="card">
-              <h2>Remembered from prior night calls</h2>
-              <p className="muted">Waiting for the call.</p>
-            </div>
+            <PriorCallsCard items={call?.priorCalls ?? []} backend={call?.memoryBackend ?? null} started={!!call} />
             <div className="card">
               <h2>Ask the chart</h2>
               <p className="muted">Available during a call.</p>

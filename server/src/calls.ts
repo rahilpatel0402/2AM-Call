@@ -3,6 +3,8 @@ import type { Response } from "express";
 import { randomUUID } from "node:crypto";
 import { getScript, type ScriptLine } from "./db.js";
 import { runPipeline } from "./pipeline.js";
+import { recallForResident } from "./memory.js";
+import type { ExtractedFacts, PriorCallMemory, UnsaidItem } from "./types.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -12,14 +14,17 @@ export type CallState = {
   residentId: string;
   startedAt: number;
   segments: Segment[];
-  facts: unknown | null;       // Phase 3
-  unsaid: unknown[];           // Phase 3
+  facts: ExtractedFacts | null;
+  unsaid: UnsaidItem[];
   redFlags: unknown[];         // Phase 4
   scores: unknown | null;      // Phase 4
   feasibility: unknown[];      // Phase 4
-  priorCalls: unknown[];       // Phase 4
+  priorCalls: PriorCallMemory[];
+  memoryBackend: string | null;
   status: "live" | "ended";
   replaying: boolean;
+  processing: boolean;
+  pipelineError: string | null;
 };
 
 const calls = new Map<string, CallState>();
@@ -38,10 +43,19 @@ export function createCall(residentId: string): CallState {
     scores: null,
     feasibility: [],
     priorCalls: [],
+    memoryBackend: null,
     status: "live",
     replaying: false,
+    processing: false,
+    pipelineError: null,
   };
   calls.set(state.callId, state);
+  // Recall this resident's prior night calls from Agent Memory at call start.
+  recallForResident(residentId).then((r) => {
+    state.priorCalls = r.items;
+    state.memoryBackend = r.backend;
+    broadcast(state);
+  });
   return state;
 }
 
@@ -79,20 +93,36 @@ export function addSegment(state: CallState, text: string, speaker: Speaker = "u
   return seg;
 }
 
-// Bursts of segments within 700 ms run the pipeline once.
+const running = new Set<string>();
+const rerunQueued = new Set<string>();
+
+// Bursts of segments within 700 ms run the pipeline once. Runs never overlap for a call:
+// segments that arrive mid-run queue exactly one follow-up run over the full transcript.
 function schedulePipeline(state: CallState) {
   clearTimeout(debounceTimers.get(state.callId));
-  debounceTimers.set(
-    state.callId,
-    setTimeout(async () => {
-      try {
-        await runPipeline(state);
-      } catch (err) {
-        console.error(`[pipeline] ${state.callId}: ${(err as Error).message}`);
-      }
-      broadcast(state);
-    }, 700),
-  );
+  debounceTimers.set(state.callId, setTimeout(() => void runNow(state), 700));
+}
+
+async function runNow(state: CallState) {
+  if (running.has(state.callId)) {
+    rerunQueued.add(state.callId);
+    return;
+  }
+  running.add(state.callId);
+  state.processing = true;
+  broadcast(state);
+  try {
+    await runPipeline(state);
+    state.pipelineError = null;
+  } catch (err) {
+    state.pipelineError = (err as Error).message;
+    console.error(`[pipeline] ${state.callId}: ${state.pipelineError}`);
+  } finally {
+    running.delete(state.callId);
+    state.processing = false;
+    broadcast(state);
+  }
+  if (rerunQueued.delete(state.callId)) void runNow(state);
 }
 
 export function endCall(state: CallState) {
