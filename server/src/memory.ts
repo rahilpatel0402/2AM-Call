@@ -30,11 +30,6 @@ function toText(c: CallRecord): string {
   return `${tag(c.residentId)} On-call ${c.ts.slice(0, 16)} with ${c.physician}. Reason: ${c.reason}. Disposition: ${c.disposition}. ${c.summary}`;
 }
 
-// Chart timestamps are local facility time without offset; Agent Memory wants RFC 3339.
-function rfc3339(ts: string): string {
-  return /[zZ]|[+-]\d\d:\d\d$/.test(ts) ? ts : `${ts.length === 16 ? ts + ":00" : ts}-04:00`;
-}
-
 function remoteConfigured(): boolean {
   return Boolean(env("SPECTRON_ENDPOINT") && env("SPECTRON_CONTEXT") && env("SPECTRON_API_KEY"));
 }
@@ -59,22 +54,25 @@ export async function rememberCall(call: CallRecord): Promise<void> {
   const text = toText(call);
   local.push({ residentId: call.residentId, ts: call.ts, text, source: "local fallback store", backend: "local" });
   if (!remoteConfigured()) return;
-  // infer "none" stores the text verbatim so the resident tag survives for filtering on recall.
-  await remote("/facts", { text, infer: "none", observed_at: rfc3339(call.ts) }, call.id);
+  // infer "none" stores the text verbatim so the resident tag and call time survive for recall.
+  // (observed_at is rejected for literal writes, so the call time lives in the text itself.)
+  await remote("/facts", { text, infer: "none" }, call.id);
 }
 
 let seeded: Promise<void> | null = null;
 
 export function seedMemory(): Promise<void> {
   seeded ??= (async () => {
+    let ok = 0;
     for (const c of seedPriorCalls) {
       try {
         await rememberCall(c);
+        ok++;
       } catch (err) {
         console.warn(`[memory] seed failed for ${c.id}: ${(err as Error).message}`);
       }
     }
-    console.log(`[memory] seeded ${seedPriorCalls.length} prior calls (${remoteConfigured() ? "SurrealDB Agent Memory" : "local fallback"})`);
+    console.log(`[memory] seeded ${ok}/${seedPriorCalls.length} prior calls (${remoteConfigured() ? "SurrealDB Agent Memory" : "local fallback"})`);
   })();
   return seeded;
 }
@@ -117,10 +115,6 @@ export async function recallForResident(residentId: string): Promise<RecallResul
         backend: "agent-memory",
         traceId: data?.trace?.traceId,
       });
-    }
-    if (!items.length) {
-      const sample = data?.hits?.[0] ? Object.keys(data.hits[0]).join(",") : "no hits";
-      return { backend: "local", items: recallLocal(residentId), error: `Agent Memory returned no tagged hits (${sample}); showing local copy` };
     }
     return { backend: "agent-memory", items: items.sort((a, b) => b.ts.localeCompare(a.ts)) };
   } catch (err) {
