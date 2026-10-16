@@ -82,9 +82,33 @@ export function takePostSession(state: CallState) {
   return p ?? null;
 }
 
-// At call start: open the portal in the cloud browser so its live view is already streaming.
+// Warm sessions: opened when the physician selects a resident, so the live view is already connected
+// in the browser (hidden) before the call starts. Reused once, if still fresh.
+const warm = new Map<string, { at: number; agent: EhrAgent; session: Promise<PreparedSession> }>();
+const WARM_MAX_AGE_MS = 3 * 60_000;
+
+export async function warmEhr(residentId: string): Promise<{ liveViewUrl: string | null }> {
+  const w = warm.get(residentId);
+  if (w && Date.now() - w.at < WARM_MAX_AGE_MS) return { liveViewUrl: (await w.session.catch(() => null))?.liveViewUrl ?? null };
+  const agent: EhrAgent = { status: "ready", task: "pull", liveViewUrl: null, detail: "Facility EHR portal ready", found: [], matchesChart: null, ms: null };
+  const session = prepareEhrSession(agent, () => {});
+  warm.set(residentId, { at: Date.now(), agent, session });
+  session.catch(() => warm.delete(residentId));
+  return { liveViewUrl: (await session.catch(() => null))?.liveViewUrl ?? null };
+}
+
+// At call start: use the warm portal session if there is one, otherwise open one now.
 export function prepareEhr(state: CallState) {
   state.wantsEhr = true;
+  const w = warm.get(state.residentId);
+  warm.delete(state.residentId);
+  if (w && Date.now() - w.at < WARM_MAX_AGE_MS) {
+    state.ehrAgent = w.agent;
+    Object.assign(w.agent, { status: "starting", detail: "Facility EHR portal open. Waiting for the resident on the call." });
+    preparedSessions.set(state.callId, w.session);
+    w.session.then(() => broadcast(state)).catch(() => {});
+    return;
+  }
   state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening the facility EHR portal", found: [], matchesChart: null, ms: null };
   const p = prepareEhrSession(state.ehrAgent, () => broadcast(state));
   p.catch(() => {}); // failures surface when the read starts

@@ -11,7 +11,7 @@ import { rememberCall, resetDemoMemory } from "./memory.js";
 import { mockEhrRouter } from "./mockEhr.js";
 import { anchorReady, pullChart, runEhrPost, type EhrAgent } from "./anchor.js";
 import { recallForResident, seedMemory } from "./memory.js";
-import { addSegment, broadcast, createCall, prepareEhr, prepareEhrPost, takePostSession, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
+import { addSegment, broadcast, createCall, warmEhr, prepareEhr, prepareEhrPost, takePostSession, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
 const app = express();
 app.use(cors());
@@ -21,6 +21,12 @@ app.use(express.json({ limit: "1mb" }));
 app.use("/ehr", mockEhrRouter());
 
 app.get("/api/anchor/status", (_req, res) => res.json(anchorReady()));
+
+// Opens the facility EHR portal in a cloud browser ahead of the call so its live view is connected early.
+app.post("/api/residents/:id/ehr-warm", async (req, res) => {
+  if (!getResident(req.params.id) || !anchorReady().ok) return res.json({ liveViewUrl: null });
+  res.json(await warmEhr(req.params.id).catch(() => ({ liveViewUrl: null })));
+});
 
 // Anchor Browser signs into the facility web portal and pulls meds, MOLST, allergies (validated against the chart).
 app.post("/api/residents/:id/ehr-pull", async (req, res) => {

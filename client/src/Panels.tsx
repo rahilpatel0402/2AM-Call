@@ -540,21 +540,21 @@ export type EhrAgent = {
   ms: number | null;
 };
 
-export function EhrAgentPip({ agent }: { agent: EhrAgent }) {
+export function EhrAgentPip({ agent, offstage }: { agent: EhrAgent; offstage?: boolean }) {
   // The posting window opens minimized ("ready") when the physician decides, and expands on Sign.
   const [min, setMin] = useState(agent.status === "ready");
   // After reading the chart the window tucks away; it opens again when posting the signed note.
   useEffect(() => {
-    if (agent.status === "posting") setMin(false);
+    if (agent.status === "posting" || agent.status === "reading" || agent.status === "starting") setMin(false);
     if (agent.task === "pull" && (agent.status === "done" || agent.status === "failed")) {
       const t = setTimeout(() => setMin(true), 2500);
       return () => clearTimeout(t);
     }
   }, [agent.status, agent.task]);
   const working = agent.status === "starting" || agent.status === "reading" || agent.status === "posting";
-  const title = agent.task === "post" ? (agent.status === "ready" ? "Facility EHR ready for the signed note" : "Posting signed note to facility EHR") : "Reading facility EHR";
+  const title = agent.task === "post" ? (agent.status === "ready" ? "Facility EHR ready for the signed note" : "Posting signed note to facility EHR") : agent.status === "ready" ? "Facility EHR portal ready" : "Reading facility EHR";
   return (
-    <div className={`pip ${min ? "pip-min" : ""} pip-${agent.status}`}>
+    <div className={`pip ${min ? "pip-min" : ""} pip-${agent.status} ${offstage ? "pip-offstage" : ""}`}>
       <div className="pip-head">
         {working ? <span className="pulse pulse-blue" /> : <span className="pip-check">{agent.status === "failed" ? "!" : "✓"}</span>}
         <span className="pip-title">Anchor agent · {title}</span>

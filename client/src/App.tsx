@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { AskCard, Card, DecisionBar, EhrAgentPip, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
+import { AskCard, Card, DecisionBar, EhrAgentPip, type EhrAgent, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -39,6 +39,7 @@ export default function App() {
   const [closingHint, setClosingHint] = useState<string | null>(null);
   const [anchorOk, setAnchorOk] = useState(false);
   const [ehrAgentOn, setEhrAgentOn] = useState(true);
+  const [warmUrl, setWarmUrl] = useState<string | null>(null);
   const callIdRef = useRef<string | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [voicing, setVoicing] = useState(false);
@@ -212,6 +213,25 @@ export default function App() {
     if (call) await postJson(`/api/calls/${call.callId}/end`).catch(() => {});
   }
 
+  // Warm the facility EHR portal browser when a resident is selected and after each call ends, so the
+  // live view is already connected when the next call starts.
+  const callEnded = call?.status === "ended";
+  useEffect(() => {
+    setWarmUrl(null);
+    if (!anchorOk || !ehrAgentOn || (call && !callEnded)) return;
+    let cancelled = false;
+    postJson<{ liveViewUrl: string | null }>(`/api/residents/${residentId}/ehr-warm`)
+      .then((w) => { if (!cancelled) setWarmUrl(w.liveViewUrl); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [residentId, anchorOk, ehrAgentOn, callEnded]);
+
+  const pipAgents: EhrAgent[] = [];
+  if (call?.ehrAgent) pipAgents.push(call.ehrAgent);
+  if (warmUrl && !pipAgents.some((a) => a.liveViewUrl === warmUrl)) {
+    pipAgents.push({ status: "ready", task: "pull", liveViewUrl: warmUrl, detail: "Facility EHR portal ready", found: [], matchesChart: null, ms: null });
+  }
+
   const r = detail?.resident;
   const callActive = call?.status === "live";
   const ended = call?.status === "ended";
@@ -332,7 +352,11 @@ export default function App() {
         </div>
       </main>
 
-      {call?.ehrAgent && <EhrAgentPip key={`${call.callId}-${call.ehrAgent.task}`} agent={call.ehrAgent} />}
+      {/* Keyed by live view URL: the warm window and the call's window are the same element, so the
+          stream connected during warm-up is reused instead of reconnecting (no black frames). */}
+      {pipAgents.map((a, i) => (
+        <EhrAgentPip key={a.liveViewUrl ?? `pending-${a.task}`} agent={a} offstage={i > 0} />
+      ))}
 
       <footer className="actionbar">
         <button className={`btn ${needDecision ? "btn-danger" : "btn-outline"}`} onClick={endCurrentCall} disabled={!callActive}>
