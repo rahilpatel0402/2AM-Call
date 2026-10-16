@@ -12,6 +12,7 @@ Rules:
 - Every number said for a vital sign (blood pressure, heart rate, respiratory rate, temperature, oxygen saturation) goes in vitals_reported, even when it is mentioned alone or as part of the reason for the call.
 - Temperature: put the number exactly as said in temp, and set temp_unit to the unit the speaker said (C, F, or not_stated). Never convert units yourself.
 - mentioned_checklist: include all 8 items. Set mentioned=true only if the call stated the actual content of that item, so the physician now knows it. Examples: "she's on Eliquis" mentions anticoagulation; "she's a full code" mentions code_status; "at baseline he's only oriented to himself" mentions baseline_mental_status. Comparisons without the content do NOT count: "more confused than usual" does not state the baseline, and "calling again" does not state prior calls. Otherwise mentioned=false and no quote.
+- Negation: a denied event ("no fall") has occurred=false; a denied symptom has present=false.
 - Do not give clinical advice. Do not suggest a disposition.
 - Respond only by calling the record_facts tool, exactly once.`;
 
@@ -65,11 +66,12 @@ const TOOL: ToolDef = {
           type: "object",
           properties: {
             type: { type: "string", enum: ["fall", "other"] },
+            occurred: { type: "boolean", description: "false when the event is explicitly denied, e.g. \"no fall\"." },
             witnessed: { type: "boolean" },
             head_strike: { type: "boolean" },
             quote: quoted,
           },
-          required: ["type", "quote"],
+          required: ["type", "occurred", "quote"],
         },
       },
       mentioned_checklist: {
@@ -158,7 +160,8 @@ export async function extractFacts(segments: Segment[]): Promise<ExtractedFacts>
     .map((s: any) => ({ name: s.name, present: s.present, quote: s.quote }));
 
   const events = (Array.isArray(raw.events) ? raw.events : [])
-    .filter((e: any) => (e?.type === "fall" || e?.type === "other") && inTranscript(e.quote, `event.${e.type}`))
+    // Denied events ("no fall") are dropped in code: only events that occurred can drive rules.
+    .filter((e: any) => (e?.type === "fall" || e?.type === "other") && e?.occurred !== false && inTranscript(e.quote, `event.${e.type}`))
     .map((e: any) => ({ type: e.type, witnessed: e.witnessed, head_strike: e.head_strike, quote: e.quote }));
 
   // A "mentioned" claim without a verifiable quote counts as NOT mentioned, so the chart fact still surfaces.

@@ -1,11 +1,13 @@
 {
   "name": "two-am-call",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "smoke": "npm run smoke --prefix server",
-    "demo:reset": "node -e \"fetch('http://localhost:3001/api/demo/reset',{method:'POST'}).then(r=>r.json()).then(j=>console.log(j.message))\""
+    "demo:reset": "node -e \"fetch('http://localhost:3001/api/demo/reset',{method:'POST'}).then(r=>r.json()).then(j=>console.log(j.message))\"",
+    "eval": "node server/node_modules/tsx/dist/cli.mjs scripts/eval.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
