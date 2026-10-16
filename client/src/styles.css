@@ -168,8 +168,10 @@ body { margin: 0; background: var(--bg); }
 
 /* ---------- transcript ---------- */
 .transcript-card { position: sticky; top: 18px; }
-.transcript-card .card-body { max-height: calc(100vh - 250px); overflow-y: auto; }
-.bubbles { display: flex; flex-direction: column; gap: 10px; }
+.bubbles {
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: calc(100vh - 290px); overflow-y: auto; padding-right: 4px;
+}
 .bubble {
   padding: 10px 14px; border-radius: 12px;
   line-height: 1.45; font-size: 1rem;
@@ -197,7 +199,7 @@ body { margin: 0; background: var(--bg); }
 .item-label { font-weight: 800; font-size: 0.85rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.03em; }
 .item-value { font-size: 1.05rem; line-height: 1.4; margin-top: 2px; }
 .item-amber {
-  padding: 10px 12px; margin-bottom: 8px; border: none;
+  padding: 8px 12px; margin-bottom: 6px; border: none;
   background: var(--amber-bg); border-left: 4px solid #f79009; border-radius: 6px;
 }
 .item-amber .item-label { color: var(--amber); }

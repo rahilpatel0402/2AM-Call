@@ -35,7 +35,6 @@ export default function App() {
   const [call, setCall] = useState<CallState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const callIdRef = useRef<string | null>(null);
-  const transcriptEnd = useRef<HTMLDivElement>(null);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
@@ -67,10 +66,6 @@ export default function App() {
     es.onmessage = (ev) => setCall(JSON.parse(ev.data));
     return () => es.close();
   }, [call?.callId]);
-
-  useEffect(() => {
-    transcriptEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [call?.segments.length, scribe.partialTranscript]);
 
   async function newCall(): Promise<CallState> {
     const state = await postJson<CallState>("/api/calls", { residentId });
@@ -195,7 +190,6 @@ export default function App() {
             partial={scribe.isConnected ? scribe.partialTranscript : undefined}
             hint="Choose a resident, then start a Replay or a Live call."
           />
-          <div ref={transcriptEnd} />
         </Card>
 
         <div className="panels">

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { CoveredItem, Delta, ExtractedFacts, FeasibilityItem, News2, PriorCallMemory, RedFlag, ReportedVitals, Scores, Segment, UnsaidItem } from "./types";
 
 // ---------- shared card chrome ----------
@@ -43,8 +43,22 @@ export function Card({
 // ---------- transcript ----------
 
 export function Transcript({ segments, partial, hint }: { segments: Segment[]; partial?: string; hint?: string }) {
+  // Auto-scroll only this box, and only if the reader is already at the bottom. Never moves the page.
+  const box = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
+  useEffect(() => {
+    const el = box.current;
+    if (el && pinned.current) el.scrollTop = el.scrollHeight;
+  }, [segments.length, partial]);
   return (
-    <div className="bubbles">
+    <div
+      className="bubbles"
+      ref={box}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      }}
+    >
       {!segments.length && !partial && <p className="empty">{hint}</p>}
       {segments.map((s) => (
         <div key={s.id} className={`bubble bubble-${s.speaker ?? "unknown"}`}>
@@ -59,13 +73,9 @@ export function Transcript({ segments, partial, hint }: { segments: Segment[]; p
 
 // ---------- not yet mentioned / covered ----------
 
-const VISIBLE_UNSAID = 5;
-
 export function UnsaidCard({
   items, covered, started, ended,
 }: { items: UnsaidItem[]; covered: CoveredItem[]; started: boolean; ended: boolean }) {
-  const [showAll, setShowAll] = useState(false);
-  const shown = showAll ? items : items.slice(0, VISIBLE_UNSAID);
   const title = ended ? "Never mentioned on this call" : "Not yet mentioned";
   return (
     <Card
@@ -78,7 +88,7 @@ export function UnsaidCard({
       {!started && <p className="empty">Critical chart context the caller has not mentioned will appear here, with its source.</p>}
       {started && !items.length && <p className="empty">Every checklist item has been covered on the call.</p>}
       <ul className="items">
-        {shown.map((u) => (
+        {items.map((u) => (
           <li key={u.item} className="item item-amber">
             <div className="item-label">{u.label}</div>
             <div className="item-value">{u.value}</div>
@@ -86,11 +96,6 @@ export function UnsaidCard({
           </li>
         ))}
       </ul>
-      {items.length > VISIBLE_UNSAID && (
-        <button className="link-btn" onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Show fewer" : `Show ${items.length - VISIBLE_UNSAID} more`}
-        </button>
-      )}
       {covered.length > 0 && (
         <div className="covered">
           <div className="covered-title">Covered on call</div>
