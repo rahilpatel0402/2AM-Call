@@ -71,11 +71,19 @@ export function mockEhrRouter() {
     const x = getResident(req.params.id);
     if (!x) return res.status(404).send(page("Not found", "<p>Resident not found.</p>"));
     const meds = x.medications.map((m) => `<tr><td>${esc(m.name)}</td><td>${esc(m.dose)}</td><td>${esc(m.class ?? "")}</td></tr>`).join("");
+    const vitals = [...x.vitals_history].reverse().map((v) => `<tr><td>${v.ts.replace("T", " ").slice(0, 16)}</td><td>${v.sbp}/${v.dbp}</td><td>${v.hr}</td><td>${v.rr}</td><td>${v.temp_c.toFixed(1)}</td><td>${v.spo2}% ${esc(v.o2)}</td></tr>`).join("");
+    const labs = [...x.labs].sort((a, b) => b.ts.localeCompare(a.ts)).map((l) => `<tr><td>${l.ts.slice(0, 10)}</td><td>${esc(l.name)}</td><td>${l.value}</td><td>${esc(l.unit)}</td></tr>`).join("");
+    const hosp = x.recent_hospitalization ? `<h2>Recent hospitalization</h2><p id="hospitalization">Discharged ${x.recent_hospitalization.discharged}: ${esc(x.recent_hospitalization.reason)}</p>` : "";
     const notes = [...notesFor(x.id)].reverse().map((n) => `<div class="note"><div class="meta">${esc(n.ts)} · ${esc(n.author)}</div>${esc(n.text)}</div>`).join("") || "<p>No notes posted tonight.</p>";
     res.send(page(x.name, `<h1>${esc(x.name)}</h1><p>Room ${x.room} · ${x.age} ${x.sex} · PCP ${esc(x.pcp)}</p>
 <h2>Code status / MOLST</h2><p id="code-status">${esc(x.code_status.value)}. MOLST: ${esc(x.code_status.molst)}</p>
+<h2>Goals of care</h2><p id="goals">${esc(x.goals_of_care.summary)}</p>
+<h2>Baseline</h2><p id="baseline">Mental status: ${esc(x.baseline.mental_status)} Mobility: ${esc(x.baseline.mobility)}</p>
 <h2>Allergies</h2><p id="allergies">${esc(x.allergies.join(", "))}</p>
 <h2>Active medications</h2><table id="medications"><tr><th>Medication</th><th>Dose</th><th>Class</th></tr>${meds}</table>
+${hosp}
+<h2>Vital signs (last 14 days)</h2><table id="vitals"><tr><th>Date/time</th><th>BP</th><th>HR</th><th>RR</th><th>Temp C</th><th>SpO2</th></tr>${vitals}</table>
+<h2>Lab results</h2><table id="labs"><tr><th>Date</th><th>Test</th><th>Value</th><th>Unit</th></tr>${labs}</table>
 <h2>Progress notes</h2>${notes}
 <h2>Add progress note</h2><form method="post" action="/ehr/residents/${x.id}/notes">
 <label for="author">Author</label><input id="author" name="author" size="40">

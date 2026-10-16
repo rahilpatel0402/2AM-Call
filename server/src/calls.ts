@@ -8,6 +8,7 @@ import type { CoveredItem, ExtractedFacts, PriorCallMemory, UnsaidItem } from ".
 import type { Scores } from "./scores.js";
 import type { RedFlag } from "./safety/rules.js";
 import type { FeasibilityItem } from "./feasibility.js";
+import type { EhrAgent } from "./anchor.js";
 
 export type Speaker = "nurse" | "doctor" | "unknown";
 export type Segment = { id: string; ts: number; speaker?: Speaker; text: string };
@@ -37,6 +38,7 @@ export type CallState = {
   note: string | null;
   signedBy: string | null;
   ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
+  ehrAgent: EhrAgent | null;
 };
 
 const calls = new Map<string, CallState>();
@@ -68,6 +70,7 @@ export function createCall(residentId: string): CallState {
     note: null,
     signedBy: null,
     ehrPost: null,
+    ehrAgent: null,
   };
   calls.set(state.callId, state);
   // Recall this resident's prior night calls from Agent Memory at call start.

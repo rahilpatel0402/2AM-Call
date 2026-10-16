@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CommitStrategy, useScribe } from "@elevenlabs/react";
 import type { CallState, ResidentDetail, ResidentSummary } from "./types";
-import { AskCard, Card, DecisionBar, EhrStrip, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
+import { AskCard, Card, DecisionBar, EhrAgentPip, FacilityCard, NoteCard, HeardCard, Icon, PriorCallsCard, RedFlagsCard, Transcript, UnsaidCard, VitalsCard } from "./Panels";
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -37,6 +37,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [anchorOk, setAnchorOk] = useState(false);
+  const [ehrAgentOn, setEhrAgentOn] = useState(true);
   const callIdRef = useRef<string | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [voicing, setVoicing] = useState(false);
@@ -90,7 +91,7 @@ export default function App() {
 
   async function newCall(): Promise<CallState> {
     setNotice(null);
-    const state = await postJson<CallState>("/api/calls", { residentId });
+    const state = await postJson<CallState>("/api/calls", { residentId, ehrAgent: anchorOk && ehrAgentOn });
     callIdRef.current = state.callId;
     setCall(state);
     return state;
@@ -221,6 +222,11 @@ export default function App() {
               <option key={x.id} value={x.id}>{x.name} · Rm {x.room}</option>
             ))}
           </select>
+          {anchorOk && (
+            <label className="audio-toggle" title="At call start, Anchor signs into the facility EHR portal and reads the chart">
+              <input type="checkbox" checked={ehrAgentOn} onChange={(e) => setEhrAgentOn(e.target.checked)} /> EHR agent
+            </label>
+          )}
           <label className="audio-toggle" title="Play the call audio during replay (ElevenLabs voices)">
             <input type="checkbox" checked={audioOn} onChange={(e) => setAudioOn(e.target.checked)} /> Audio
           </label>
@@ -261,7 +267,6 @@ export default function App() {
         </div>
       </div>
 
-      <EhrStrip residentId={residentId} enabled={anchorOk} />
       {(call?.facts || needDecision) && call && <DecisionBar call={call} busy={drafting} warn={needDecision} onDecide={(d) => void decide(d)} />}
       {error && <div className="error-bar">{error}</div>}
       {notice && <div className="notice-bar">{notice} <button className="link-btn" onClick={() => { setNotice(null); void startReplay(); }}>Start a new call for {r?.name.split(" ")[0]}</button></div>}
@@ -296,6 +301,8 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {call?.ehrAgent && <EhrAgentPip key={`${call.callId}-${call.ehrAgent.task}`} agent={call.ehrAgent} />}
 
       <footer className="actionbar">
         <button className={`btn ${needDecision ? "btn-danger" : "btn-outline"}`} onClick={endCurrentCall} disabled={!callActive}>

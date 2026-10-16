@@ -75,4 +75,5 @@ export type CallState = {
   note: string | null;
   signedBy: string | null;
   ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
+  ehrAgent: import("./Panels").EhrAgent | null;
 };

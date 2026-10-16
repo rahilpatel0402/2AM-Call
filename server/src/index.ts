@@ -8,7 +8,7 @@ import { askChart } from "./ask.js";
 import { draftNote, memorySummary, type Disposition } from "./note.js";
 import { rememberCall, resetDemoMemory } from "./memory.js";
 import { mockEhrRouter } from "./mockEhr.js";
-import { anchorReady, postNote, pullChart } from "./anchor.js";
+import { anchorReady, pullChart, runEhrPost, runEhrPull, type EhrAgent } from "./anchor.js";
 import { recallForResident, seedMemory } from "./memory.js";
 import { addSegment, broadcast, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
@@ -114,8 +114,15 @@ function withCall(id: string, res: express.Response): CallState | undefined {
 
 app.post("/api/calls", (req, res) => {
   const residentId = String(req.body?.residentId ?? "");
-  if (!getResident(residentId)) return res.status(400).json({ error: "unknown residentId" });
-  res.json(createCall(residentId));
+  const resident = getResident(residentId);
+  if (!resident) return res.status(400).json({ error: "unknown residentId" });
+  const state = createCall(residentId);
+  // At call start, Anchor's agent signs into the facility EHR portal and reads the chart (watched via live view).
+  if (req.body?.ehrAgent && anchorReady().ok) {
+    state.ehrAgent = { status: "starting", task: "pull", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+    void runEhrPull(resident, state.ehrAgent, () => broadcast(state));
+  }
+  res.json(state);
 });
 
 app.get("/api/calls/:id/stream", (req, res) => {
@@ -181,12 +188,15 @@ app.post("/api/calls/:id/sign", async (req, res) => {
   }
   // Post the signed note into the facility EHR portal in the background (Anchor Browser).
   if (anchorReady().ok) {
+    const agent: EhrAgent = { status: "starting", task: "post", liveViewUrl: null, detail: "Opening a cloud browser for the facility EHR portal", found: [], matchesChart: null, ms: null };
+    state.ehrAgent = agent;
     state.ehrPost = { status: "posting", detail: "Anchor is signing into the facility EHR portal" };
-    const resident = getResident(state.residentId)!;
-    postNote(resident, physician, note)
-      .then((x) => (state.ehrPost = { status: "posted", detail: `Posted and verified in the facility portal (${Math.round(x.ms / 1000)} s)` }))
-      .catch((err) => (state.ehrPost = { status: "failed", detail: (err as Error).message.slice(0, 160) }))
-      .finally(() => broadcast(state));
+    const changed = () => {
+      if (agent.status === "posted") state.ehrPost = { status: "posted", detail: `Posted and verified in the facility portal (${Math.round((agent.ms ?? 0) / 1000)} s)` };
+      if (agent.status === "failed") state.ehrPost = { status: "failed", detail: agent.detail };
+      broadcast(state);
+    };
+    void runEhrPost(getResident(state.residentId)!, physician, note, agent, changed);
   }
   broadcast(state);
   res.json({ ok: true, remembered: m });

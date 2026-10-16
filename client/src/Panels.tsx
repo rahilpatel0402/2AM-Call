@@ -523,3 +523,45 @@ export function EhrStrip({ residentId, enabled }: { residentId: string; enabled:
     </div>
   );
 }
+
+// ---------- Anchor EHR agent: picture-in-picture live view ----------
+
+export type EhrAgent = {
+  status: "starting" | "reading" | "posting" | "done" | "posted" | "failed";
+  task: "pull" | "post";
+  liveViewUrl: string | null;
+  detail: string;
+  found: string[];
+  matchesChart: boolean | null;
+  ms: number | null;
+};
+
+export function EhrAgentPip({ agent }: { agent: EhrAgent }) {
+  const [min, setMin] = useState(false);
+  const working = agent.status === "starting" || agent.status === "reading" || agent.status === "posting";
+  const title = agent.task === "post" ? "Posting signed note to facility EHR" : "Reading facility EHR";
+  return (
+    <div className={`pip ${min ? "pip-min" : ""} pip-${agent.status}`}>
+      <div className="pip-head">
+        {working ? <span className="pulse pulse-blue" /> : <span className="pip-check">{agent.status === "failed" ? "!" : "✓"}</span>}
+        <span className="pip-title">Anchor agent · {title}</span>
+        <button className="pip-btn" onClick={() => setMin(!min)} aria-label={min ? "Expand" : "Minimize"}>{min ? "▢" : "–"}</button>
+      </div>
+      {!min && (
+        <>
+          <div className="pip-view">
+            {agent.liveViewUrl
+              ? <iframe src={agent.liveViewUrl} title="Anchor live browser" sandbox="allow-same-origin allow-scripts" allow="clipboard-read; clipboard-write" />
+              : <div className="pip-wait">Opening a secure cloud browser</div>}
+          </div>
+          <div className="pip-foot">
+            <div className="pip-detail">{agent.detail}{agent.ms ? ` (${Math.round(agent.ms / 1000)} s)` : ""}</div>
+            {agent.found.length > 0 && (
+              <div className="pip-found">{agent.found.map((f) => <span key={f} className="pip-chip">✓ {f}</span>)}</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

@@ -393,3 +393,24 @@ body { margin: 0; background: var(--bg); }
 .ehr-detail.ehr-posted { color: var(--green); font-weight: 600; }
 .decision-warn { background: var(--amber-bg); border-bottom: 2px solid #f79009; animation: flag-in 0.3s ease-out; }
 .decision-warn .decision-hint { color: var(--amber); font-weight: 700; }
+
+/* Anchor EHR agent picture-in-picture */
+.pip {
+  position: fixed; right: 20px; bottom: 76px; z-index: 50;
+  width: 440px; background: #fff; border-radius: 12px; overflow: hidden;
+  border: 2px solid var(--blue); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+  animation: flag-in 0.35s ease-out;
+}
+.pip-failed { border-color: var(--red); }
+.pip-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--navy); color: #fff; }
+.pip-title { font-size: 0.8rem; font-weight: 700; flex: 1; }
+.pip-check { font-weight: 800; color: #6ce9a6; }
+.pip-btn { background: transparent; border: 1px solid #36507a; color: #fff; border-radius: 6px; cursor: pointer; width: 26px; height: 22px; line-height: 1; }
+.pip-view { position: relative; height: 250px; background: #0f172a; }
+.pip-view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.pip-wait { color: #a9bcd6; display: grid; place-items: center; height: 100%; font-size: 0.85rem; }
+.pip-foot { padding: 8px 12px; }
+.pip-detail { font-size: 0.8rem; font-weight: 600; color: var(--text-2); }
+.pip-found { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.pip-chip { font-size: 0.7rem; font-weight: 700; background: var(--green-bg); color: var(--green); padding: 2px 8px; border-radius: 10px; animation: slide-in 0.3s ease-out; }
+.pip-min .pip-head { border-radius: 10px; }
