@@ -125,15 +125,37 @@ export default function App() {
 
   function stopVoice() {
     voiceRun.current++;
+    pausedRef.current = false;
+    setPaused(false);
     audioEl.current?.pause();
     audioEl.current = null;
     setVoicing(false);
   }
 
-  // Voiced replay: each line is played in the nurse or physician voice (ElevenLabs TTS) and
-  // posted to the call as it starts playing, so the panels react while the room hears the call.
-  async function voicedReplay(callId: string, script: string) {
+  // Pause / resume a replay (for presenting): stops the audio and the clock that drives the next line.
+  const pausedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+  function togglePause() {
+    pausedRef.current = !pausedRef.current;
+    setPaused(pausedRef.current);
+    if (pausedRef.current) audioEl.current?.pause();
+    else void audioEl.current?.play().catch(() => {});
+  }
+  // Sleep that does not count time spent paused.
+  async function pausableSleep(ms: number, run: number) {
+    let left = ms;
+    while (left > 0 && voiceRun.current === run) {
+      await new Promise((r) => setTimeout(r, 100));
+      if (!pausedRef.current) left -= 100;
+    }
+  }
+
+  // Replay (voiced with ElevenLabs TTS, or silent text): each line is committed to the call when the
+  // speaker finishes, so the panels react as the call unfolds. Pausable at any point.
+  async function voicedReplay(callId: string, script: string, withAudio: boolean) {
     const run = ++voiceRun.current;
+    pausedRef.current = false;
+    setPaused(false);
     setVoicing(true);
     await postJson(`/api/calls/${callId}/replaying`, { on: true });
     const lines: { speaker: "nurse" | "doctor"; text: string; delayMs: number }[] = await fetch(`/api/scripts/${script}`).then((r) => r.json());
@@ -142,25 +164,30 @@ export default function App() {
       a.preload = "auto";
       return a;
     };
-    let next = clip(0);
+    let next = withAudio ? clip(0) : null;
     for (let i = 0; i < lines.length; i++) {
       if (voiceRun.current !== run) return;
-      const audio = next;
-      if (i + 1 < lines.length) next = clip(i + 1);
-      audioEl.current = audio;
-      try {
-        await audio.play();
-        await new Promise<void>((resolve) => {
-          audio.onended = () => resolve();
-          audio.onerror = () => resolve();
-        });
-      } catch {
-        await new Promise((r) => setTimeout(r, lines[i].delayMs)); // audio blocked or failed: keep the text pacing
+      while (pausedRef.current && voiceRun.current === run) await new Promise((r) => setTimeout(r, 100));
+      if (withAudio && next) {
+        const audio = next;
+        if (i + 1 < lines.length) next = clip(i + 1);
+        audioEl.current = audio;
+        try {
+          await audio.play();
+          await new Promise<void>((resolve) => {
+            audio.onended = () => resolve();
+            audio.onerror = () => resolve();
+          });
+        } catch {
+          await pausableSleep(lines[i].delayMs, run); // audio blocked or failed: keep the text pacing
+        }
+      } else {
+        await pausableSleep(lines[i].delayMs, run);
       }
       if (voiceRun.current !== run) return;
       // Committed when the speaker finishes, like live transcription: nothing is known before it is said.
       postJson(`/api/calls/${callId}/segments`, { text: lines[i].text, speaker: lines[i].speaker }).catch(() => {});
-      await new Promise((r) => setTimeout(r, 350)); // natural pause between speakers
+      await pausableSleep(350, run); // natural pause between speakers
     }
     if (voiceRun.current !== run) return;
     setVoicing(false);
@@ -174,8 +201,7 @@ export default function App() {
       stopVoice();
       const state = await newCall();
       const script = residentId.replace("res_", "");
-      if (audioOn) void voicedReplay(state.callId, script).catch((e) => setError(`Voiced replay: ${e.message}`));
-      else await postJson(`/api/calls/${state.callId}/replay`, { script });
+      void voicedReplay(state.callId, script, audioOn).catch((e) => setError(`Replay: ${e.message}`));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -278,6 +304,9 @@ export default function App() {
             <input type="checkbox" checked={audioOn} onChange={(e) => setAudioOn(e.target.checked)} /> Audio
           </label>
           <button className="btn btn-light" onClick={startReplay} disabled={(!!call?.replaying || voicing) && callActive}>Replay</button>
+          {voicing && callActive && (
+            <button className={`btn ${paused ? "btn-danger" : "btn-light"}`} onClick={togglePause}>{paused ? "Resume" : "Pause"}</button>
+          )}
           <button className={`btn ${scribe.isConnected ? "btn-danger" : "btn-light"}`} onClick={toggleLive}>
             {scribe.isConnected ? "Stop live" : "Live"}
           </button>
