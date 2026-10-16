@@ -7,7 +7,8 @@
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "smoke": "npm run smoke --prefix server",
     "demo:reset": "node -e \"fetch('http://localhost:3001/api/demo/reset',{method:'POST'}).then(r=>r.json()).then(j=>console.log(j.message))\"",
-    "eval": "node server/node_modules/tsx/dist/cli.mjs scripts/eval.ts"
+    "eval": "node server/node_modules/tsx/dist/cli.mjs scripts/eval.ts",
+    "tunnel": "node scripts/tunnel.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

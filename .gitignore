@@ -7,3 +7,5 @@ dist/
 .DS_Store
 server/.tts-cache/
 server/.demo-epoch
+tools/
+server/.ehr-url

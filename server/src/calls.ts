@@ -36,6 +36,7 @@ export type CallState = {
   disposition: "transfer" | "treat_in_place" | null;
   note: string | null;
   signedBy: string | null;
+  ehrPost: { status: "posting" | "posted" | "failed"; detail: string } | null;
 };
 
 const calls = new Map<string, CallState>();
@@ -66,6 +67,7 @@ export function createCall(residentId: string): CallState {
     disposition: null,
     note: null,
     signedBy: null,
+    ehrPost: null,
   };
   calls.set(state.callId, state);
   // Recall this resident's prior night calls from Agent Memory at call start.

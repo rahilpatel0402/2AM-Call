@@ -7,12 +7,32 @@ import { lineAudio, prewarmAll } from "./tts.js";
 import { askChart } from "./ask.js";
 import { draftNote, memorySummary, type Disposition } from "./note.js";
 import { rememberCall, resetDemoMemory } from "./memory.js";
+import { mockEhrRouter } from "./mockEhr.js";
+import { anchorReady, postNote, pullChart } from "./anchor.js";
 import { recallForResident, seedMemory } from "./memory.js";
 import { addSegment, broadcast, createCall, endCall, getCall, replay, setReplaying, subscribe, type CallState, type Speaker } from "./calls.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
+
+// Mock facility EHR portal (synthetic), reached by Anchor through the public tunnel.
+app.use("/ehr", mockEhrRouter());
+
+app.get("/api/anchor/status", (_req, res) => res.json(anchorReady()));
+
+// Anchor Browser signs into the facility web portal and pulls meds, MOLST, allergies (validated against the chart).
+app.post("/api/residents/:id/ehr-pull", async (req, res) => {
+  const r = getResident(req.params.id);
+  if (!r) return res.status(404).json({ error: "resident not found" });
+  const ready = anchorReady();
+  if (!ready.ok) return res.status(503).json({ error: ready.reason });
+  try {
+    res.json(await pullChart(r));
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, llmProvider: env("LLM_PROVIDER") || "bedrock" });
@@ -158,6 +178,15 @@ app.post("/api/calls/:id/sign", async (req, res) => {
     await rememberCall({ id: state.callId, residentId: state.residentId, ts: new Date(state.clockStart).toLocaleString("sv-SE").replace(" ", "T").slice(0, 16), physician, ...m }); // ts in local facility time
   } catch (err) {
     console.warn(`[sign] memory write failed: ${(err as Error).message}`);
+  }
+  // Post the signed note into the facility EHR portal in the background (Anchor Browser).
+  if (anchorReady().ok) {
+    state.ehrPost = { status: "posting", detail: "Anchor is signing into the facility EHR portal" };
+    const resident = getResident(state.residentId)!;
+    postNote(resident, physician, note)
+      .then((x) => (state.ehrPost = { status: "posted", detail: `Posted and verified in the facility portal (${Math.round(x.ms / 1000)} s)` }))
+      .catch((err) => (state.ehrPost = { status: "failed", detail: (err as Error).message.slice(0, 160) }))
+      .finally(() => broadcast(state));
   }
   broadcast(state);
   res.json({ ok: true, remembered: m });
